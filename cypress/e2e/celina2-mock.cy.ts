@@ -1628,3 +1628,124 @@ describe('OTP Verifikacija - Detaljni testovi', () => {
     cy.contains(/verifikacij|kod/i).should('exist');
   });
 });
+
+// ============================================================
+// Stedna knjizica (mock) — Celina 2 nadogradnja
+// ============================================================
+
+describe('Stedna knjizica (mock) — Celina 2 nadogradnja', () => {
+  beforeEach(() => {
+    // Mock kamatne stope (klijentski endpoint)
+    cy.intercept('GET', '**/api/savings/rates', {
+      statusCode: 200,
+      body: [
+        { id: 1, currencyCode: 'RSD', termMonths: 3, annualRate: 2.5, active: true, effectiveFrom: '2026-01-01' },
+        { id: 2, currencyCode: 'RSD', termMonths: 6, annualRate: 3.0, active: true, effectiveFrom: '2026-01-01' },
+        { id: 3, currencyCode: 'RSD', termMonths: 12, annualRate: 4.0, active: true, effectiveFrom: '2026-01-01' },
+        { id: 4, currencyCode: 'RSD', termMonths: 24, annualRate: 4.5, active: true, effectiveFrom: '2026-01-01' },
+        { id: 5, currencyCode: 'RSD', termMonths: 36, annualRate: 5.0, active: true, effectiveFrom: '2026-01-01' },
+      ],
+    }).as('rates');
+
+    // Mock klijentova lista depozita
+    cy.intercept('GET', '**/api/savings/deposits/my', {
+      statusCode: 200,
+      body: [
+        {
+          id: 1, clientId: 1, clientName: 'Stefan Jovanovic',
+          linkedAccountId: 1, linkedAccountNumber: '222000112345678911',
+          principalAmount: 200000, currencyCode: 'RSD', termMonths: 12, annualInterestRate: 4.0,
+          startDate: '2026-03-12', maturityDate: '2027-03-12', nextInterestPaymentDate: '2026-06-12',
+          totalInterestPaid: 1333.33, autoRenew: true, status: 'ACTIVE',
+          createdAt: '2026-03-12T09:00:00Z', updatedAt: '2026-05-12T02:00:00Z',
+        },
+      ],
+    }).as('myDeposits');
+  });
+
+  it('Sc S1: Klijent vidi listu depozita', () => {
+    cy.visit('/savings', { onBeforeLoad: setupClientSession });
+    cy.wait('@myDeposits');
+    cy.contains(/Stednja/i).should('be.visible');
+    cy.get('[data-testid="deposit-card-1"]').should('be.visible');
+  });
+
+  it('Sc S2: Empty state se prikazuje kada nema depozita', () => {
+    cy.intercept('GET', '**/api/savings/deposits/my', {
+      statusCode: 200,
+      body: [],
+    }).as('emptyDeposits');
+    cy.visit('/savings', { onBeforeLoad: setupClientSession });
+    cy.wait('@emptyDeposits');
+    cy.contains(/Nemate aktivnih depozita/i).should('be.visible');
+  });
+
+  it('Sc S3: Klijent navigira na "+ Novi depozit"', () => {
+    cy.visit('/savings', { onBeforeLoad: setupClientSession });
+    cy.wait('@myDeposits');
+    cy.get('[data-testid="open-new-deposit"]').click();
+    cy.url().should('include', '/savings/new');
+  });
+
+  it('Sc S4: Sidebar prikazuje "Stednja" link za klijenta', () => {
+    cy.visit('/', { onBeforeLoad: setupClientSession });
+    cy.contains(/Stednja/i).should('be.visible');
+  });
+
+  it('Sc S5: Admin vidi stranicu svih depozita', () => {
+    cy.intercept('GET', '**/api/admin/savings/deposits*', {
+      statusCode: 200,
+      body: { content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 },
+    }).as('adminDeposits');
+    cy.visit('/admin/savings/deposits', { onBeforeLoad: setupAdminSession });
+    cy.wait('@adminDeposits');
+    cy.contains(/(orocni )?depozit/i).should('be.visible');
+  });
+
+  it('Sc S6: Admin moze da vidi stranicu kamatnih stopa', () => {
+    cy.intercept('GET', '**/api/admin/savings/rates', {
+      statusCode: 200,
+      body: [
+        { id: 1, currencyCode: 'RSD', termMonths: 12, annualRate: 4.0, active: true, effectiveFrom: '2026-01-01' },
+        { id: 2, currencyCode: 'EUR', termMonths: 12, annualRate: 2.5, active: true, effectiveFrom: '2026-01-01' },
+      ],
+    }).as('adminRates');
+    cy.visit('/admin/savings/rates', { onBeforeLoad: setupAdminSession });
+    cy.wait('@adminRates');
+    cy.contains(/Kamatne stope/i).should('be.visible');
+  });
+
+  it('Sc S7: Klijent vidi detalje depozita sa timeline-om transakcija', () => {
+    cy.intercept('GET', '**/api/savings/deposits/1', {
+      statusCode: 200,
+      body: {
+        id: 1, clientId: 1, clientName: 'Stefan Jovanovic',
+        linkedAccountId: 1, linkedAccountNumber: '222000112345678911',
+        principalAmount: 200000, currencyCode: 'RSD', termMonths: 12, annualInterestRate: 4.0,
+        startDate: '2026-03-12', maturityDate: '2027-03-12', nextInterestPaymentDate: '2026-06-12',
+        totalInterestPaid: 1333.33, autoRenew: true, status: 'ACTIVE',
+        createdAt: '2026-03-12T09:00:00Z', updatedAt: '2026-05-12T02:00:00Z',
+      },
+    }).as('depositDetails');
+    cy.intercept('GET', '**/api/savings/deposits/1/transactions', {
+      statusCode: 200,
+      body: [
+        {
+          id: 1, depositId: 1, type: 'OPEN', amount: 200000, currencyCode: 'RSD',
+          processedDate: '2026-03-12', resultingTransactionId: null,
+          description: 'Otvaranje depozita', createdAt: '2026-03-12T09:00:00Z',
+        },
+      ],
+    }).as('txs');
+    cy.visit('/savings/1', { onBeforeLoad: setupClientSession });
+    cy.wait('@depositDetails');
+    cy.wait('@txs');
+    cy.contains(/200/).should('be.visible');
+    cy.get('[data-testid="timeline"]').should('be.visible');
+  });
+
+  it('Sc S8: HomePage prikazuje "Orocno" KPI chip za klijenta', () => {
+    cy.visit('/', { onBeforeLoad: setupClientSession });
+    cy.contains(/Orocno/i).should('be.visible');
+  });
+});

@@ -24,6 +24,8 @@ import {
   Landmark,
   Handshake,
   PiggyBank,
+  Vault,
+  Percent,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/button';
@@ -80,6 +82,7 @@ export default function ClientSidebar() {
       { label: 'Kartice', path: '/cards', icon: <CreditCard className="h-4 w-4" /> },
       { label: 'Krediti', path: '/loans', icon: <FileText className="h-4 w-4" /> },
       { label: 'Marzni racuni', path: '/margin-accounts', icon: <Landmark className="h-4 w-4" /> },
+      { label: 'Stednja', path: '/savings', icon: <PiggyBank className="h-4 w-4" /> },
     ],
     []
   );
@@ -140,9 +143,17 @@ export default function ClientSidebar() {
           { label: 'Aktuari', path: '/employee/actuaries', icon: <TrendingUp className="h-4 w-4" /> },
           { label: 'Porez', path: '/employee/tax', icon: <Calculator className="h-4 w-4" /> },
           { label: 'Profit Banke', path: '/employee/profit-bank', icon: <Landmark className="h-4 w-4" /> },
+          { label: 'Svi depoziti', path: '/admin/savings/deposits', icon: <Vault className="h-4 w-4" /> },
           // Napomena: "Kreiraj fond" se pristupa preko /funds stranice (dugme gore desno).
           // Zaseban sidebar link napravio bi koliziju sa postojecim Cypress regex
           // testovima (/novi|dodaj|kreiraj/i) na Admin Employee flow-u.
+        );
+      }
+
+      // Admin-only savings links
+      if (isAdmin) {
+        links.push(
+          { label: 'Kamatne stope', path: '/admin/savings/rates', icon: <Percent className="h-4 w-4" /> },
         );
       }
 

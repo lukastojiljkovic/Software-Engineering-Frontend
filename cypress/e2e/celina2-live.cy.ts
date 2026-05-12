@@ -1172,3 +1172,36 @@ describe('Live: Sidebar detalji', () => {
     cy.contains(/Krediti/i).should('exist');
   });
 });
+
+// ============================================================
+// Stedna knjizica (live) — Celina 2 nadogradnja
+// ============================================================
+
+describe('Stedna knjizica (live) — Celina 2 nadogradnja', () => {
+  it('Sc S1 live: Klijent moze da otvori /savings i vidi seedovani depozit', () => {
+    loginAsClient('stefan');
+    cy.visit('/savings');
+    cy.contains(/Stednja/i, { timeout: 10000 }).should('be.visible');
+    // Stefan ima 1 seedovani depozit (RSD 200K 12m)
+    cy.contains(/200/, { timeout: 10000 }).should('be.visible');
+  });
+
+  it('Sc S2 live: Klijent vidi sidebar link Stednja', () => {
+    loginAsClient('stefan');
+    cy.visit('/');
+    cy.contains(/Stednja/i, { timeout: 10000 }).should('be.visible');
+  });
+
+  it('Sc S3 live: Admin vidi /admin/savings/deposits stranicu', () => {
+    loginAsAdmin();
+    cy.visit('/admin/savings/deposits');
+    cy.contains(/(orocni )?depozit/i, { timeout: 10000 }).should('be.visible');
+  });
+
+  it('Sc S4 live: GET /api/savings/rates vraca seedovane stope', () => {
+    loginAsClient('stefan');
+    cy.visit('/savings/new');
+    // Kamatne stope su ucitane na stranici za novi depozit
+    cy.contains(/RSD|kamat/i, { timeout: 10000 }).should('be.visible');
+  });
+});
