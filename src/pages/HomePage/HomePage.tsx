@@ -17,6 +17,8 @@ import portfolioService from '@/services/portfolioService';
 import orderService from '@/services/orderService';
 import type { PortfolioSummary, Order } from '@/types/celina3';
 import type { Account, ExchangeRate, Transaction, PaymentRecipient } from '@/types/celina2';
+import { savingsService } from '@/services/savingsService';
+import type { SavingsDepositDto } from '@/types/savings';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -242,6 +244,7 @@ export default function HomePage() {
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [employeeLoading, setEmployeeLoading] = useState(true);
+  const [deposits, setDeposits] = useState<SavingsDepositDto[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -265,6 +268,15 @@ export default function HomePage() {
     };
     load();
   }, []);
+
+  // Load savings deposits for client dashboard KPI chip
+  useEffect(() => {
+    if (user?.role === 'CLIENT') {
+      savingsService.listMyDeposits()
+        .then(setDeposits)
+        .catch(() => setDeposits([]));
+    }
+  }, [user?.role]);
 
   // Load portfolio + orders for employee dashboard
   useEffect(() => {
@@ -350,6 +362,24 @@ export default function HomePage() {
       totalTxCount: transactions.length,
     };
   }, [transactions, accounts]);
+
+  // Total savings in RSD (active deposits converted via exchange rates)
+  const totalSavingsRsd = useMemo(() => {
+    const rateMap = new Map<string, number>();
+    exchangeRates.forEach(r => {
+      const rsdPerUnit = r.middleRate && r.middleRate > 0 ? (1 / r.middleRate) : 0;
+      if (rsdPerUnit > 0) rateMap.set(r.currency, rsdPerUnit);
+    });
+    return deposits
+      .filter(d => d.status === 'ACTIVE')
+      .reduce((sum, d) => {
+        const rate = d.currencyCode === 'RSD' ? 1 : (rateMap.get(d.currencyCode) ?? 0);
+        return sum + d.principalAmount * rate;
+      }, 0);
+  }, [deposits, exchangeRates]);
+
+  const activeDepositCount = useMemo(() =>
+    deposits.filter(d => d.status === 'ACTIVE').length, [deposits]);
 
   // Chart data (memoized to avoid regenerating random data on every render)
   const balanceHistory = useMemo(() => generateBalanceHistory(totalRSD || 250000, chartPeriod), [totalRSD, chartPeriod]);
@@ -491,6 +521,17 @@ export default function HomePage() {
                   {monthlyStats.savings >= 0 ? 'Ustedjeno ' : 'Manjak '}
                   {formatAmount(Math.abs(monthlyStats.savings), 0)}
                 </div>
+              </div>
+
+              <div className="col-span-2 rounded-2xl bg-sky-400/15 backdrop-blur-sm px-4 py-3 border border-sky-300/20">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-100">Orocno</span>
+                  <PiggyBank className="h-3.5 w-3.5 text-sky-200" />
+                </div>
+                <div className="mt-1 text-xl font-bold font-mono tabular-nums text-sky-100">
+                  {balanceVisible ? formatAmount(totalSavingsRsd, 0) : '•••••'}
+                </div>
+                <div className="text-[10px] text-sky-200/80">RSD · {activeDepositCount} aktivnih</div>
               </div>
             </div>
           </div>

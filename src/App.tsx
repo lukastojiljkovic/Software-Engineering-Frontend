@@ -65,6 +65,13 @@ import FundDetailsPage from './pages/Funds/FundDetailsPage';
 import CreateFundPage from './pages/Funds/CreateFundPage';
 import ProfitBankPage from './pages/ProfitBank/ProfitBankPage';
 
+// Stedna knjizica
+import SavingsListPage from './pages/Savings/SavingsListPage';
+import SavingsNewDepositPage from './pages/Savings/SavingsNewDepositPage';
+import SavingsDetailsPage from './pages/Savings/SavingsDetailsPage';
+import AdminSavingsDepositsPage from './pages/Savings/AdminSavingsDepositsPage';
+import AdminSavingsRatesPage from './pages/Savings/AdminSavingsRatesPage';
+
 // Celina 6 - Arbitro AI asistent (web only). Phase 5 optimizacija:
 // React.lazy + Suspense — Arbitro modul (~250KB sa Liquid Glass CSS-om)
 // se ucitava tek kada korisnik prvi put klikne FAB. Tako se inicijalni
@@ -162,6 +169,21 @@ export default function App() {
           {/* Investicioni fondovi (Celina 4) — discovery i details su za sve */}
           <Route path="/funds" element={<FundsDiscoveryPage />} />
           <Route path="/funds/:id" element={<FundDetailsPage />} />
+
+          {/* Stedna knjizica — klijent rute (noAgentOnly) */}
+          <Route element={<ProtectedRoute noAgentOnly />}>
+            <Route path="/savings" element={<SavingsListPage />} />
+            <Route path="/savings/new" element={<SavingsNewDepositPage />} />
+            <Route path="/savings/:id" element={<SavingsDetailsPage />} />
+          </Route>
+
+          {/* Stedna knjizica — admin/supervisor rute */}
+          <Route element={<ProtectedRoute supervisorOnly />}>
+            <Route path="/admin/savings/deposits" element={<AdminSavingsDepositsPage />} />
+          </Route>
+          <Route element={<ProtectedRoute adminOnly />}>
+            <Route path="/admin/savings/rates" element={<AdminSavingsRatesPage />} />
+          </Route>
         </Route>
       </Route>
 
