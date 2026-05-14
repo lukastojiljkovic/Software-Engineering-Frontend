@@ -11,12 +11,40 @@ interface CardReq {
   id: number;
   accountId: number;
   accountNumber: string;
+  accountType?: string;
+  accountCurrency?: string;
+  accountBalance?: number;
   cardLimit: number;
+  cardType?: string;
+  cardCategory?: string;
+  creditLimit?: number;
   clientEmail: string;
   clientName: string;
   status: string;
   createdAt: string;
+  processedAt?: string;
+  processedBy?: string;
+  rejectionReason?: string;
 }
+
+const CARD_TYPE_LABEL: Record<string, string> = {
+  VISA: 'Visa',
+  MASTERCARD: 'Mastercard',
+  DINACARD: 'DinaCard',
+  AMERICAN_EXPRESS: 'American Express',
+};
+
+const CARD_CATEGORY_LABEL: Record<string, string> = {
+  DEBIT: 'Debit',
+  CREDIT: 'Kreditna (rate)',
+  INTERNET_PREPAID: 'Internet prepaid',
+};
+
+const CARD_CATEGORY_BADGE: Record<string, string> = {
+  DEBIT: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  CREDIT: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  INTERNET_PREPAID: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300',
+};
 
 const statusBorderColors: Record<string, string> = {
   PENDING: 'border-l-amber-500',
@@ -144,22 +172,64 @@ export default function CardRequestsPage() {
                   </Badge>
                 </div>
 
-                {/* Details grid */}
+                {/* Tip kartice + kategorija badges */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {req.cardType && (
+                    <Badge variant="info" className="font-mono uppercase">
+                      {CARD_TYPE_LABEL[req.cardType] ?? req.cardType}
+                    </Badge>
+                  )}
+                  {req.cardCategory && (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide ${CARD_CATEGORY_BADGE[req.cardCategory] ?? CARD_CATEGORY_BADGE.DEBIT}`}>
+                      {CARD_CATEGORY_LABEL[req.cardCategory] ?? req.cardCategory}
+                    </span>
+                  )}
+                </div>
+
+                {/* Details grid sa pun pregledom: racun + brend + kategorija + limit */}
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="space-y-0.5">
                     <p className="text-xs text-muted-foreground">Broj racuna</p>
-                    <p className="font-mono text-xs font-medium">{req.accountNumber}</p>
+                    <p className="font-mono text-xs font-medium" data-testid={`req-${req.id}-account-number`}>{req.accountNumber}</p>
+                    {req.accountType && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {req.accountType}
+                        {req.accountCurrency ? ` · ${req.accountCurrency}` : ''}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-0.5">
-                    <p className="text-xs text-muted-foreground">Limit</p>
+                    <p className="text-xs text-muted-foreground">Stanje racuna</p>
+                    <p className="font-mono text-xs font-medium tabular-nums">
+                      {Number(req.accountBalance ?? 0).toLocaleString('sr-RS')} {req.accountCurrency ?? 'RSD'}
+                    </p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-muted-foreground">Limit potrosnje</p>
                     <p className="font-mono font-medium tabular-nums">{Number(req.cardLimit || 0).toLocaleString('sr-RS')} RSD</p>
                   </div>
+                  {req.cardCategory === 'CREDIT' && req.creditLimit ? (
+                    <div className="space-y-0.5">
+                      <p className="text-xs text-muted-foreground">Kreditni limit</p>
+                      <p className="font-mono font-medium tabular-nums text-amber-600 dark:text-amber-400">
+                        {Number(req.creditLimit).toLocaleString('sr-RS')} RSD
+                      </p>
+                    </div>
+                  ) : (
+                    <div />
+                  )}
                 </div>
 
-                {/* Date */}
-                <p className="text-xs text-muted-foreground">
-                  {new Date(req.createdAt).toLocaleString('sr-RS')}
-                </p>
+                {/* Date + processed info */}
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  <p>Podnet: {new Date(req.createdAt).toLocaleString('sr-RS')}</p>
+                  {req.processedAt && req.processedBy && (
+                    <p>Obradio: <span className="font-medium">{req.processedBy}</span> ({new Date(req.processedAt).toLocaleString('sr-RS')})</p>
+                  )}
+                  {req.rejectionReason && (
+                    <p className="text-red-600 dark:text-red-400">Razlog: {req.rejectionReason}</p>
+                  )}
+                </div>
 
                 {/* Actions */}
                 {req.status === 'PENDING' && (
