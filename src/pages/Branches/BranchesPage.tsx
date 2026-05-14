@@ -117,10 +117,29 @@ export default function BranchesPage() {
         </div>
       ) : filteredBranches.length === 0 ? (
         <div className="w-full flex items-center justify-center rounded-2xl border bg-muted/30" style={{ height: 'min(72vh, 720px)', minHeight: 520 }}>
-          <div className="text-center space-y-2">
+          <div className="text-center space-y-2 max-w-md px-6">
             <MapPin className="h-10 w-10 mx-auto text-muted-foreground/50" />
-            <p className="font-semibold">Nema lokacija</p>
-            <p className="text-sm text-muted-foreground">Pokusajte drugacije filtere ili obrisi pretragu.</p>
+            {branches.length === 0 ? (
+              <>
+                <p className="font-semibold">Nema seedovanih lokacija</p>
+                <p className="text-sm text-muted-foreground">
+                  Sistem ne sadrzi nijednu ekspozituru ni bankomat. Najverovatnije seed
+                  jos nije izvrsen ili je Postgres volume star. Probaj{' '}
+                  <code className="px-1 py-0.5 rounded bg-muted text-foreground font-mono text-xs">
+                    docker compose down -v && docker compose up -d
+                  </code>{' '}
+                  pa sacekaj da seed kontejner zavrsi (~60s).
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold">Nema lokacija po trenutnim filterima</p>
+                <p className="text-sm text-muted-foreground">
+                  Sistem ima {branches.length} lokacija ali nijedna ne odgovara izabranim
+                  filterima. Pokusaj drugacije filtere ili obrisi pretragu.
+                </p>
+              </>
+            )}
           </div>
         </div>
       ) : (
