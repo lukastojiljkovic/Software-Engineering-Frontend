@@ -78,7 +78,7 @@ export function ArbitroComposer() {
           rows={1}
           placeholder={
             speech.isListening
-              ? 'Slusam… (klikni mic ponovo da posaljes)'
+              ? (speech.liveTranscript || 'Slusam… (klikni mic ponovo da posaljes)')
               : 'Pitaj me o Banka 2 aplikaciji…'
           }
           className={`arbitro-textarea flex-1 ${speech.isListening ? 'arbitro-textarea-listening' : ''}`}
@@ -132,6 +132,19 @@ export function ArbitroComposer() {
       {speech.error && (
         <div className="mt-2 text-[11px] text-rose-600 dark:text-rose-400 px-2">
           {speech.error}
+        </div>
+      )}
+
+      {/* Real-time transcript dok korisnik prica — browser webkitSpeechRecognition
+          (best-effort, samo Chrome/Edge/Brave). Vizuelan feedback; BE Gemma 4 ASR
+          ostaje glavni izvor. Prikazujemo samo dok je mic aktivan + ima content-a. */}
+      {speech.isListening && speech.liveTranscript && (
+        <div
+          className="mt-2 text-xs px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/50 text-indigo-900 dark:text-indigo-100 italic"
+          data-testid="arbitro-live-transcript"
+        >
+          <span className="text-[10px] uppercase tracking-wider not-italic opacity-60 mr-1.5">live</span>
+          {speech.liveTranscript}
         </div>
       )}
     </div>

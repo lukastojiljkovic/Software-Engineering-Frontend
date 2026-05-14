@@ -23,6 +23,14 @@ export interface SpeechRecognitionState {
   isListening: boolean;
   /** Greska (mikrofon permission denied, ne moze record, ...). */
   error: string | null;
+  /**
+   * Real-time interim transcript za UI feedback dok korisnik prica.
+   * Koristi browser webkitSpeechRecognition (Chrome/Edge/Brave) za sirov SR text.
+   * BE Gemma 4 ASR ostaje GLAVNI — ovaj transcript je SAMO vizuelni feedback i
+   * resetuje se kad korisnik stop-uje. Prazan string ako browser ne podrzava
+   * SpeechRecognition (npr. Firefox/Safari) ili je tek startovano.
+   */
+  liveTranscript: string;
   /** Pokrene snimanje. */
   start: () => void;
   /**
@@ -33,6 +41,30 @@ export interface SpeechRecognitionState {
   stop: () => Promise<Blob | null>;
   /** Resetuje state (briseuje grešku, ali ne zaustavlja snimanje). */
   reset: () => void;
+}
+
+// Web Speech API type augmentation (TS lib.dom nema definicije).
+interface WebSpeechRecognitionResult {
+  isFinal: boolean;
+  0: { transcript: string };
+}
+interface WebSpeechRecognitionEvent {
+  resultIndex: number;
+  results: ArrayLike<WebSpeechRecognitionResult> & { length: number };
+}
+interface WebSpeechRecognition extends EventTarget {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: WebSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+interface WindowWithSpeech extends Window {
+  webkitSpeechRecognition?: { new (): WebSpeechRecognition };
+  SpeechRecognition?: { new (): WebSpeechRecognition };
 }
 
 /**
@@ -53,10 +85,55 @@ export function useSpeechRecognition(
 
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [liveTranscript, setLiveTranscript] = useState('');
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const stopResolverRef = useRef<((blob: Blob | null) => void) | null>(null);
+  const speechRecRef = useRef<WebSpeechRecognition | null>(null);
+
+  // Helper za browser-side real-time SR (Chrome/Edge/Brave webkitSpeechRecognition)
+  // Pokrenuti paralelno sa MediaRecorder-om radi UI feedback-a. BE Gemma 4 ASR
+  // ostaje glavni — ovaj rezultat se NE salje, samo prikazuje korisniku.
+  const startBrowserSr = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const w = window as WindowWithSpeech;
+    const Ctor = w.webkitSpeechRecognition ?? w.SpeechRecognition;
+    if (!Ctor) return; // Firefox/Safari — nema browser SR, samo MediaRecorder
+    try {
+      const rec = new Ctor();
+      rec.lang = 'sr-Latn-RS'; // srpski latinica; fallback na 'sr-RS' ako browser ne podrzava
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.onresult = (event) => {
+        let interim = '';
+        let finalText = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) finalText += result[0].transcript;
+          else interim += result[0].transcript;
+        }
+        setLiveTranscript((prev) => (finalText ? prev + finalText + ' ' : prev) + interim);
+      };
+      rec.onerror = () => {
+        // Tih fail — browser SR je samo UI feedback, ne kritican
+      };
+      rec.onend = () => {
+        speechRecRef.current = null;
+      };
+      rec.start();
+      speechRecRef.current = rec;
+    } catch {
+      // Initialization failed (CSP, permission, ...) — tih fail
+    }
+  }, []);
+
+  const stopBrowserSr = useCallback(() => {
+    if (speechRecRef.current) {
+      try { speechRecRef.current.stop(); } catch { /* noop */ }
+      speechRecRef.current = null;
+    }
+  }, []);
 
   const cleanup = useCallback(() => {
     if (streamRef.current) {
@@ -143,6 +220,9 @@ export function useSpeechRecognition(
 
       recorder.start(250); // chunk every 250ms
       setIsListening(true);
+      // Paralelno start-uj browser SR za real-time UI feedback (best effort)
+      setLiveTranscript('');
+      startBrowserSr();
     } catch (e) {
       const err = e as { name?: string; message?: string };
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
@@ -154,10 +234,12 @@ export function useSpeechRecognition(
       }
       cleanup();
       setIsListening(false);
+      stopBrowserSr();
     }
-  }, [isSupported, cleanup, onAudioReady]);
+  }, [isSupported, cleanup, onAudioReady, startBrowserSr, stopBrowserSr]);
 
   const stop = useCallback((): Promise<Blob | null> => {
+    stopBrowserSr();
     return new Promise((resolve) => {
       if (!recorderRef.current || recorderRef.current.state === 'inactive') {
         resolve(null);
@@ -173,16 +255,18 @@ export function useSpeechRecognition(
         resolve(null);
       }
     });
-  }, [cleanup]);
+  }, [cleanup, stopBrowserSr]);
 
   const reset = useCallback(() => {
     cleanup();
+    stopBrowserSr();
     setIsListening(false);
     setError(null);
-  }, [cleanup]);
+    setLiveTranscript('');
+  }, [cleanup, stopBrowserSr]);
 
   // Cleanup pri unmount-u
   useEffect(() => cleanup, [cleanup]);
 
-  return { isSupported, isListening, error, start, stop, reset };
+  return { isSupported, isListening, error, liveTranscript, start, stop, reset };
 }
