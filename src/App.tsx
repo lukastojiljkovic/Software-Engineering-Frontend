@@ -63,6 +63,7 @@ import OtcMyPublicPage from './pages/Otc/OtcMyPublicPage';
 import FundsDiscoveryPage from './pages/Funds/FundsDiscoveryPage';
 import FundDetailsPage from './pages/Funds/FundDetailsPage';
 import CreateFundPage from './pages/Funds/CreateFundPage';
+import BranchesPage from './pages/Branches/BranchesPage';
 import ProfitBankPage from './pages/ProfitBank/ProfitBankPage';
 
 // Stedna knjizica
@@ -169,6 +170,9 @@ export default function App() {
           {/* Investicioni fondovi (Celina 4) — discovery i details su za sve */}
           <Route path="/funds" element={<FundsDiscoveryPage />} />
           <Route path="/funds/:id" element={<FundDetailsPage />} />
+
+          {/* Mapa lokacija (ekspoziture + bankomati) — svi role-ovi */}
+          <Route path="/branches" element={<BranchesPage />} />
 
           {/* Stedna knjizica — klijent rute (noAgentOnly) */}
           <Route element={<ProtectedRoute noAgentOnly />}>

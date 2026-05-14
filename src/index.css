@@ -219,3 +219,111 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+/* ── Branches map styling (added 14.05.2026 vece-4) ─────────────────────── */
+
+.branch-divicon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.branch-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  color: white;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.branch-marker:hover {
+  transform: scale(1.15);
+}
+
+.branch-marker-atm {
+  background: linear-gradient(135deg, rgb(99 102 241) 0%, rgb(124 58 237) 100%);
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.5);
+}
+.branch-marker-atm:hover {
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.7);
+}
+.branch-marker-atm.atm-glow-24h {
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5), 0 2px 8px rgba(79, 70, 229, 0.5);
+  border-color: rgba(16, 185, 129, 0.6);
+}
+
+.atm-symbol {
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.atm-badge-24h {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: rgb(16 185 129);
+  color: white;
+  font-size: 7px;
+  font-weight: 800;
+  padding: 1px 3px;
+  border-radius: 4px;
+  border: 1px solid white;
+  line-height: 1;
+}
+
+.atm-badge-drive {
+  position: absolute;
+  bottom: -4px;
+  right: -6px;
+  font-size: 10px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+}
+
+.branch-marker-branch {
+  background: linear-gradient(135deg, rgb(139 92 246) 0%, rgb(126 34 206) 100%);
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.55);
+}
+.branch-marker-branch:hover {
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.75);
+  transform: scale(1.2) rotate(-45deg);
+}
+.branch-marker-branch svg {
+  transform: rotate(45deg);
+}
+
+/* Override leaflet default popup za tamniju temu */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+}
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+  font-family: inherit !important;
+}
+.dark .leaflet-popup-content-wrapper {
+  background: rgb(30 27 75) !important;
+  color: rgb(226 232 240) !important;
+}
+.dark .leaflet-popup-tip {
+  background: rgb(30 27 75) !important;
+}
+.dark .leaflet-popup-content p {
+  color: rgb(203 213 225) !important;
+}
+.dark .leaflet-control-zoom a {
+  background: rgb(30 27 75) !important;
+  color: rgb(226 232 240) !important;
+  border-color: rgb(67 56 202) !important;
+}
+.dark .leaflet-control-attribution {
+  background: rgba(30, 27, 75, 0.8) !important;
+  color: rgb(203 213 225) !important;
+}

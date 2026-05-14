@@ -26,6 +26,7 @@ import {
   PiggyBank,
   Vault,
   Percent,
+  MapPin,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/button';
@@ -83,6 +84,7 @@ export default function ClientSidebar() {
       { label: 'Krediti', path: '/loans', icon: <FileText className="h-4 w-4" /> },
       { label: 'Marzni racuni', path: '/margin-accounts', icon: <Landmark className="h-4 w-4" /> },
       { label: 'Stednja', path: '/savings', icon: <PiggyBank className="h-4 w-4" /> },
+      { label: 'Lokacije', path: '/branches', icon: <MapPin className="h-4 w-4" /> },
     ],
     []
   );
