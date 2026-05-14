@@ -18,6 +18,7 @@ import { AlertTriangle, CheckCircle2, Loader2, Pencil, X } from 'lucide-react';
 import VerificationModal from '../shared/VerificationModal';
 import { useArbitro } from '../../context/useArbitro';
 import { toast } from '@/lib/notify';
+import { ArbitroPreviewCard, type PreviewField } from './ArbitroPreviewCard';
 
 export function ArbitroActionModal() {
   const { pendingAction, confirmAction, rejectAction } = useArbitro();
@@ -50,6 +51,27 @@ export function ArbitroActionModal() {
       isEdited: editedParameters[key] !== undefined,
     }));
   }, [pendingAction, editedParameters]);
+
+  // Plan v3.6 §Task 7 — friendly preview fields za ArbitroPreviewCard.
+  // Heuristika za emphasis: "Iznos"/"Premium"/"Strike" → amount;
+  // "Sa racuna"/"Na racun"/"Racun" → account; "Primalac"/"Prodavac" → name.
+  const previewFields: PreviewField[] = useMemo(() => {
+    if (!pendingAction) return [];
+    return parameterEntries.map(({ key, value }) => {
+      const lower = key.toLowerCase();
+      let emphasis: PreviewField['emphasis'];
+      if (lower.includes('iznos') || lower.includes('premium') || lower.includes('strike')
+          || lower.includes('kolicina') || lower.includes('amount')) {
+        emphasis = 'amount';
+      } else if (lower.includes('racun')) {
+        emphasis = 'account';
+      } else if (lower.includes('primalac') || lower.includes('prodavac')
+          || lower.includes('kupac') || lower.includes('ime')) {
+        emphasis = 'name';
+      }
+      return { label: key, value, emphasis };
+    });
+  }, [pendingAction, parameterEntries]);
 
   const handleConfirm = async () => {
     if (!pendingAction) return;
@@ -155,6 +177,15 @@ export function ArbitroActionModal() {
             </div>
 
             <div className="space-y-3 px-5 py-4">
+              {/* Plan v3.6 §Task 7 — friendly preview card sa formatted fields. */}
+              <ArbitroPreviewCard
+                toolName={pendingAction.tool}
+                summary={pendingAction.summary}
+                fields={previewFields}
+                warnings={pendingAction.warnings}
+              />
+
+              {/* Detalji & inline edit (preostali sirovi parametri sa olovkom). */}
               {pendingAction.warnings.length > 0 && (
                 <div className="flex items-start gap-2 rounded-2xl border border-amber-300/60 bg-amber-50/80 dark:bg-amber-950/30 dark:border-amber-700/50 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />

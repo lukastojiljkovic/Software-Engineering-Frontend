@@ -57,9 +57,12 @@ describe('ArbitroActionModal', () => {
       expiresAt: '',
     };
     render(<ArbitroActionModal />);
-    expect(screen.getByText('Placanje 5000 RSD Stefanu')).toBeInTheDocument();
-    expect(screen.getByText('Sa racuna')).toBeInTheDocument();
-    expect(screen.getByText('222****3456')).toBeInTheDocument();
+    // Plan v3.6 §Task 7 — summary se renderuje 2x (PreviewCard + Dialog.Description).
+    // Koristimo getAllByText (oba treba da postoje).
+    expect(screen.getAllByText('Placanje 5000 RSD Stefanu').length).toBeGreaterThanOrEqual(1);
+    // "Sa racuna" se isto pojavljuje 2x — u PreviewCard fields i u editable dl.
+    expect(screen.getAllByText('Sa racuna').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('222****3456').length).toBeGreaterThanOrEqual(1);
   });
 
   it('prikazuje warnings ako postoje', () => {
@@ -73,7 +76,8 @@ describe('ArbitroActionModal', () => {
       expiresAt: '',
     };
     render(<ArbitroActionModal />);
-    expect(screen.getByText(/Inter-bank/)).toBeInTheDocument();
+    // Plan v3.6 §Task 7 — warnings renderuju i u PreviewCard i u inline alert-u.
+    expect(screen.getAllByText(/Inter-bank/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('klik POTVRDI bez OTP-a poziva confirmAction direktno', async () => {
