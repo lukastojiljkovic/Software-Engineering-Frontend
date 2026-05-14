@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mockujem api modul pre branch service import-a
 vi.mock('./api', () => ({
-  api: {
+  default: {
     get: vi.fn(),
   },
 }));
 
 import { branchService } from './branchService';
-import { api } from './api';
+import api from './api';
 
 describe('branchService', () => {
   beforeEach(() => {
