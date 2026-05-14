@@ -1,11 +1,11 @@
 /**
  * Arbitro Settings dropdown (gear ikonica u panel header-u).
- * Sadrzi:
- *  - Agentic mode toggle (sa upozorenjem)
- *  - (placeholder za buduce: detailedMode, useTools)
+ *
+ * Plan v3.6 §Task 6 — agentic toggle premesten u panel header (vidljiviji
+ * UX). Dropdown sad sadrzi samo TTS toggle + voice picker.
  */
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Settings, Volume2, X } from 'lucide-react';
+import { Settings, Volume2, X } from 'lucide-react';
 import { useArbitro } from '../../context/useArbitro';
 
 const VOICE_OPTIONS: Array<{ id: string; label: string }> = [
@@ -22,8 +22,7 @@ const VOICE_OPTIONS: Array<{ id: string; label: string }> = [
 ];
 
 export function ArbitroSettingsDropdown() {
-  const { agenticMode, setAgenticMode, ttsEnabled, setTtsEnabled, ttsVoice, setTtsVoice } =
-    useArbitro();
+  const { ttsEnabled, setTtsEnabled, ttsVoice, setTtsVoice } = useArbitro();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -67,39 +66,11 @@ export function ArbitroSettingsDropdown() {
           </div>
 
           <div className="px-3 pb-3 space-y-4">
-            <label className="flex items-start gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                className="mt-1 accent-indigo-500"
-                checked={agenticMode}
-                onChange={(e) => setAgenticMode(e.target.checked)}
-              />
-              <div className="flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
-                    Agentic mode
-                  </span>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-amber-600 dark:text-amber-400">
-                    BETA
-                  </span>
-                </div>
-                <p className="mt-1 text-[11px] leading-relaxed text-zinc-600 dark:text-zinc-400">
-                  Asistent moze inicirati placanja, transfere, ordere, OTC ponude
-                  i druge transakcije. Uvek trazi tvoju potvrdu pre izvrsenja.
-                </p>
-                {agenticMode && (
-                  <div className="mt-2 flex items-start gap-1.5 rounded-md bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2 py-1.5 text-[10px] text-amber-900 dark:text-amber-200">
-                    <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-                    <span>
-                      Ukljucen — proveravaj pun preview pre nego sto klikne POTVRDI.
-                    </span>
-                  </div>
-                )}
-              </div>
-            </label>
+            {/* Plan v3.6 §Task 6 — Agentic toggle vise nije ovde, sad je u
+                hero header-u (vidljiviji UX, default ON). */}
 
             {/* Phase 5 — TTS toggle + voice picker */}
-            <div className="border-t border-zinc-200/60 dark:border-zinc-700/60 pt-3 space-y-2">
+            <div className="space-y-2">
               <label className="flex items-start gap-3 cursor-pointer group">
                 <input
                   type="checkbox"

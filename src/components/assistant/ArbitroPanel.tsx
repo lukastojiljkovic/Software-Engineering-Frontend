@@ -29,6 +29,7 @@ export function ArbitroPanel() {
     health,
     loadConversation,
     agenticMode,
+    setAgenticMode,
     wizardPrompt,
   } = useArbitro();
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -87,6 +88,21 @@ export function ArbitroPanel() {
             </span>
           </div>
         </div>
+        {/* Plan v3.6 §Task 6 — vidljiv agentic toggle u panel header-u.
+            Default ON; korisnik moze isključiti klikom (cuva se u sessionStorage). */}
+        <button
+          type="button"
+          onClick={() => setAgenticMode(!agenticMode)}
+          className={`arbitro-header-btn ${agenticMode ? 'agentic-on' : ''}`}
+          aria-label={agenticMode ? 'Iskljuci agentic mode' : 'Ukljuci agentic mode'}
+          aria-pressed={agenticMode ? 'true' : 'false'}
+          title={agenticMode
+            ? 'Agentic mode aktivan — Arbitro moze inicirati transakcije sa tvojom potvrdom'
+            : 'Agentic mode iskljucen — Arbitro samo objasnjava i navodi kroz UI'}
+          data-testid="arbitro-agentic-toggle-hero"
+        >
+          <Zap className={`h-4 w-4 ${agenticMode ? 'text-indigo-500' : ''}`} />
+        </button>
         <ArbitroSettingsDropdown />
         <button
           type="button"

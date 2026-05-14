@@ -143,7 +143,14 @@ export function ArbitroProvider({ children }: { children: ReactNode }) {
   const [uiSummaryByRoute, setUiSummaryByRoute] = useState<Record<string, string>>({});
   const [recentActions, setRecentActions] = useState<string[]>(() => activityTracker.getRecent());
   const [agenticMode, setAgenticModeState] = useState<boolean>(() => {
-    return sessionStorage.getItem(SESSION_KEY_AGENTIC) === 'true';
+    // Plan v3.6 §Task 6 — default agentic mode ON (bilo OFF). Korisnik moze
+    // explicitno da iskljuci u hero toggle-u; vrednost se cuva u sessionStorage.
+    // Cuvamo "true" i "false" eksplicitno da bismo razlikovali "user iskljucio"
+    // od "nije nikad podesio" (kad explicitly OFF, nemoj override-ovati na ON).
+    const stored = sessionStorage.getItem(SESSION_KEY_AGENTIC);
+    if (stored === 'true') return true;
+    if (stored === 'false') return false;
+    return true; // default ON
   });
   const [pendingAction, setPendingAction] = useState<AgentActionPreview | null>(null);
   // Phase 4.5 — wizard state. Null kad nema aktivnog wizard-a.
