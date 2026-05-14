@@ -89,9 +89,13 @@ export default function ClientSidebar() {
 
   // OTC linkovi: po Celini 4 (Nova) §145-148, samo SUPERVIZORI (od zaposlenih)
   // i KLIJENTI sa permisijom TRADE_STOCKS smeju da vide. Agenti ne.
+  // T4A-017 fix: klijent sad mora imati eksplicitnu TRADE_STOCKS permisiju
+  // (mapiranu iz canTradeStocks polja u Client entity-ju). Default true za
+  // backwards-compat, supervizor moze revokovati preko PATCH /clients/{id}/trading.
   const perms: string[] = Array.isArray(user?.permissions) ? (user!.permissions as string[]) : [];
   const isAgent = perms.includes('AGENT') && !isSupervisor && !isAdmin;
-  const canAccessOtc = !isAgent && (isSupervisor || isAdmin || role === 'CLIENT');
+  const clientCanTrade = role === 'CLIENT' && perms.includes('TRADE_STOCKS');
+  const canAccessOtc = !isAgent && (isSupervisor || isAdmin || clientCanTrade);
 
   const tradingLinks: SidebarItem[] = useMemo(
     () => {

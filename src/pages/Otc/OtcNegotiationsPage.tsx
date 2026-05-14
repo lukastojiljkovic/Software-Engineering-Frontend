@@ -31,6 +31,17 @@ export default function OtcNegotiationsPage() {
   const [openedOfferId, setOpenedOfferId] = useState<number | null>(null);
   const [counterFormByOfferId, setCounterFormByOfferId] = useState<Record<number, CounterOtcOfferRequest>>({});
 
+  const reloadAccounts = async () => {
+    try {
+      const list = isEmployee
+        ? asArray<Account>(await accountService.getBankAccounts())
+        : asArray<Account>(await accountService.getMyAccounts());
+      setAccounts(list.filter((a) => a.status === 'ACTIVE'));
+    } catch {
+      setAccounts([]);
+    }
+  };
+
   const reloadOffers = async () => {
     setLoading(true);
     try {
@@ -46,16 +57,7 @@ export default function OtcNegotiationsPage() {
 
   useEffect(() => {
     reloadOffers();
-    (async () => {
-      try {
-        const list = isEmployee
-          ? asArray<Account>(await accountService.getBankAccounts())
-          : asArray<Account>(await accountService.getMyAccounts());
-        setAccounts(list.filter((a) => a.status === 'ACTIVE'));
-      } catch {
-        setAccounts([]);
-      }
-    })();
+    reloadAccounts();
   }, [isEmployee]);
 
   const activeOffers = useMemo(
@@ -80,8 +82,10 @@ export default function OtcNegotiationsPage() {
         buyerAccountId = preferred.id;
       }
       await otcService.acceptOffer(offer.id, buyerAccountId);
-      toast.success('Ponuda je prihvacena, opcioni ugovor je sklopljen.');
-      await reloadOffers();
+      toast.success('Ponuda je prihvacena, opcioni ugovor je sklopljen. Premija je preneta sa racuna.');
+      // T4A-002 fix: posle accept premija je preneta (skinuta sa kupca, dodata na prodavca),
+      // pa moramo refresh-ovati accounts da kartica u sidebar-u prikaze novo stanje.
+      await Promise.all([reloadOffers(), reloadAccounts()]);
     } catch (err) {
       toast.error(getErrorMessage(err, 'Prihvatanje ponude nije uspelo.'));
     } finally {

@@ -67,6 +67,15 @@ export const CardType = {
 } as const;
 export type CardType = (typeof CardType)[keyof typeof CardType];
 
+// Kategorija placanja: DEBIT (default — direktan debit), CREDIT (sa rate-ama),
+// INTERNET_PREPAID (odvojen balance za online kupovine, top-up sa Account-a).
+export const CardCategory = {
+  DEBIT: 'DEBIT',
+  CREDIT: 'CREDIT',
+  INTERNET_PREPAID: 'INTERNET_PREPAID',
+} as const;
+export type CardCategory = (typeof CardCategory)[keyof typeof CardCategory];
+
 export const CardStatus = {
   ACTIVE: 'ACTIVE',
   BLOCKED: 'BLOCKED',
@@ -183,8 +192,11 @@ export interface Card {
   id: number;
   cardNumber: string;            // 16 cifara (prikazuje se maskirano)
   cardType: CardType;
+  /** Kategorija: DEBIT (default) / CREDIT / INTERNET_PREPAID. */
+  cardCategory?: CardCategory;
   cardName?: string;             // Backend: "Visa Debit" itd.
   accountNumber: string;
+  accountId?: number;
   holderName: string;
   ownerName?: string;            // Backend alias za holderName
   expirationDate: string;
@@ -192,6 +204,12 @@ export interface Card {
   status: CardStatus;
   limit: number;
   cardLimit?: number;            // Backend alias za limit
+  /** Za INTERNET_PREPAID: tekuci balance na kartici. */
+  prepaidBalance?: number;
+  /** Za CREDIT: maksimalni iznos koji klijent moze trositi. */
+  creditLimit?: number;
+  /** Za CREDIT: trenutno duguje banci. */
+  outstandingBalance?: number;
   createdAt: string;
 }
 

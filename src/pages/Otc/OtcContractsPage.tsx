@@ -92,9 +92,17 @@ export default function OtcContractsPage() {
     setBusyContractId(contract.id);
     try {
       await otcService.exerciseContract(contract.id, buyerAccount.id);
-      toast.success('Opcioni ugovor je iskoriscen — akcije su prebacene.');
-      const data = await otcService.listMyContracts(statusFilter);
+      toast.success('Opcioni ugovor je iskoriscen — akcije su prebacene, strike cena skinuta sa racuna.');
+      // T4A-002 fix: posle exercise strike cena je skinuta sa kupcevog racuna,
+      // akcije prebacene u portfolio. Refresh oba (contracts + accounts) da UI prikaze novo stanje.
+      const [data, refreshedAccounts] = await Promise.all([
+        otcService.listMyContracts(statusFilter),
+        isEmployee
+          ? accountService.getBankAccounts()
+          : accountService.getMyAccounts(),
+      ]);
       setContracts(data ?? []);
+      setAccounts(asArray<Account>(refreshedAccounts).filter((a) => a.status === 'ACTIVE'));
     } catch (err) {
       toast.error(getErrorMessage(err, 'Iskoriscavanje nije uspelo.'));
     } finally {

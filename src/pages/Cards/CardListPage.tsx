@@ -31,12 +31,36 @@ function statusLabel(status: string): string {
   return CARD_STATUS_LABELS[status] ?? status;
 }
 
-function cardGradient(cardType: string): string {
+function cardGradient(cardType: string, cardCategory?: string): string {
+  // Tip placanja prevazilazi brend boju — za CREDIT i PREPAID koristimo karakteristicne palete.
+  if (cardCategory === 'CREDIT') {
+    return 'from-amber-500 via-yellow-600 to-orange-800'; // gold kreditna kartica
+  }
+  if (cardCategory === 'INTERNET_PREPAID') {
+    return 'from-cyan-500 via-sky-700 to-blue-900'; // futuristicki neon prepaid
+  }
+  // DEBIT: zadrzava brand boju (postojeci postavljen behavior)
   if (cardType === 'VISA') return 'from-blue-700 via-blue-800 to-slate-900';
   if (cardType === 'MASTERCARD') return 'from-red-600 via-rose-700 to-red-900';
   if (cardType === 'DINACARD') return 'from-emerald-600 via-green-700 to-teal-800';
   if (cardType === 'AMERICAN_EXPRESS') return 'from-slate-600 via-slate-700 to-zinc-900';
   return 'from-indigo-600 via-violet-700 to-purple-900';
+}
+
+/**
+ * Kategoriski overlay efekti — daje svakoj 3D kartici jedinstven hologram:
+ * - DEBIT: subtilan shine (postojeci)
+ * - CREDIT: zlatni grid + sjajni edge highlight
+ * - PREPAID: aurora effect sa pulsing neonom
+ */
+function categoryHologramClass(cardCategory?: string): string {
+  if (cardCategory === 'CREDIT') {
+    return 'before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_right,rgba(255,215,0,0.25),transparent_60%)] before:pointer-events-none';
+  }
+  if (cardCategory === 'INTERNET_PREPAID') {
+    return 'before:absolute before:inset-0 before:bg-[conic-gradient(from_180deg_at_50%_50%,rgba(56,189,248,0.18),rgba(14,165,233,0.0),rgba(125,211,252,0.18),rgba(14,165,233,0.0))] before:pointer-events-none before:animate-pulse';
+  }
+  return '';
 }
 
 
@@ -106,7 +130,18 @@ function CardChip() {
 /* Single credit card visual */
 function CreditCardVisual({ card }: { card: Card }) {
   const { ref, handleMouseMove, handleMouseLeave } = useCardTilt();
-  const gradientClass = cardGradient(card.cardName || card.cardType || 'VISA');
+  const gradientClass = cardGradient(card.cardName || card.cardType || 'VISA', card.cardCategory);
+  const hologramClass = categoryHologramClass(card.cardCategory);
+  const categoryLabel = card.cardCategory === 'CREDIT'
+    ? 'CREDIT'
+    : card.cardCategory === 'INTERNET_PREPAID'
+      ? 'PREPAID'
+      : 'DEBIT';
+  const categoryBadgeClass = card.cardCategory === 'CREDIT'
+    ? 'bg-amber-300/30 text-amber-100 border-amber-200/40'
+    : card.cardCategory === 'INTERNET_PREPAID'
+      ? 'bg-cyan-300/30 text-cyan-50 border-cyan-200/40'
+      : 'bg-white/15 text-white/90 border-white/20';
 
   return (
     <div
@@ -116,23 +151,50 @@ function CreditCardVisual({ card }: { card: Card }) {
       className="relative transition-transform duration-200 ease-out will-change-transform"
       style={{ transformStyle: 'preserve-3d' }}
     >
-      <div className={`relative bg-gradient-to-br ${gradientClass} text-white rounded-2xl p-6 min-h-[230px] flex flex-col justify-between overflow-hidden select-none`}>
+      <div className={`relative bg-gradient-to-br ${gradientClass} ${hologramClass} text-white rounded-2xl p-6 min-h-[230px] flex flex-col justify-between overflow-hidden select-none`}>
         {/* Shine/glare overlay */}
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
           style={{
             background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.12) 45%, rgba(255,255,255,0.06) 50%, transparent 55%)',
           }}
         />
+        {/* CREDIT: zlatni grid linije */}
+        {card.cardCategory === 'CREDIT' && (
+          <div
+            className="absolute inset-0 pointer-events-none opacity-25 mix-blend-overlay"
+            style={{
+              backgroundImage: 'repeating-linear-gradient(45deg, transparent 0, transparent 14px, rgba(255,215,0,0.35) 14px, rgba(255,215,0,0.35) 15px)',
+            }}
+          />
+        )}
+        {/* PREPAID: hex grid pattern */}
+        {card.cardCategory === 'INTERNET_PREPAID' && (
+          <div
+            className="absolute inset-0 pointer-events-none opacity-30 mix-blend-screen"
+            style={{
+              backgroundImage:
+                'radial-gradient(circle at 20% 30%, rgba(125,211,252,0.45) 0px, transparent 2px), ' +
+                'radial-gradient(circle at 60% 70%, rgba(56,189,248,0.45) 0px, transparent 2px), ' +
+                'radial-gradient(circle at 85% 20%, rgba(165,233,253,0.45) 0px, transparent 2px)',
+              backgroundSize: '40px 40px, 50px 50px, 30px 30px',
+            }}
+          />
+        )}
         {/* Decorative circles */}
         <div className="absolute -top-10 -right-10 h-36 w-36 rounded-full bg-white/[0.07] blur-xl" />
         <div className="absolute -bottom-14 -left-10 h-44 w-44 rounded-full bg-white/[0.04] blur-lg" />
         <div className="absolute top-1/3 right-1/3 h-24 w-24 rounded-full bg-white/[0.03] blur-md" />
 
-        {/* Top row: type + contactless + status */}
+        {/* Top row: type + category badge + contactless + status */}
         <div className="relative flex items-start justify-between">
-          <span className="text-lg font-bold tracking-wide drop-shadow-md">
-            {card.cardName || card.cardType || 'Visa Debit'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-bold tracking-wide drop-shadow-md">
+              {card.cardName || card.cardType || 'Visa Debit'}
+            </span>
+            <span className={`text-[9px] font-bold tracking-[0.15em] px-2 py-0.5 rounded border backdrop-blur-sm ${categoryBadgeClass}`} data-testid={`card-category-badge-${card.id}`}>
+              {categoryLabel}
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             <Wifi className="h-5 w-5 opacity-60 rotate-90" />
             <Badge
@@ -221,9 +283,18 @@ export default function CardListPage() {
   const [newApEmail, setNewApEmail] = useState('');
   const [newApPhone, setNewApPhone] = useState('');
   // SC28 fix: spec C2 §274-291 trazi vise tipova/brendova kartica.
-  // BE enum CardType: VISA, MASTERCARD, DINACARD, AMERICAN_EXPRESS (sve su Debit u nasem sistemu).
+  // BE enum CardType: VISA, MASTERCARD, DINACARD, AMERICAN_EXPRESS.
   const [cardBrand, setCardBrand] = useState<'VISA' | 'MASTERCARD' | 'DINACARD' | 'AMERICAN_EXPRESS'>('VISA');
+  // 14.05 vece-3 dopuna: tip placanja — DEBIT / CREDIT / INTERNET_PREPAID
+  const [cardCategory, setCardCategory] = useState<'DEBIT' | 'CREDIT' | 'INTERNET_PREPAID'>('DEBIT');
+  const [creditLimit, setCreditLimit] = useState<string>('50000');
   const [confirmBlockCardId, setConfirmBlockCardId] = useState<number | null>(null);
+  // Top-up / withdraw za INTERNET_PREPAID kartice
+  const [topUpCardId, setTopUpCardId] = useState<number | null>(null);
+  const [topUpDirection, setTopUpDirection] = useState<'top-up' | 'withdraw'>('top-up');
+  const [topUpAmount, setTopUpAmount] = useState<string>('');
+  const [topUpAccountId, setTopUpAccountId] = useState<string>('');
+  const [topUpBusy, setTopUpBusy] = useState(false);
 
   const loadCards = async () => {
     setLoading(true);
@@ -241,11 +312,18 @@ export default function CardListPage() {
   const selectedAccount = accounts.find((a) => String(a.id) === selectedAccountId);
   const isBizAccount = isBusinessAccountType(selectedAccount?.accountType);
 
+  const loadAccounts = async () => {
+    try {
+      const data = await accountService.getMyAccounts();
+      setAccounts(Array.isArray(data) ? data : []);
+    } catch {
+      setAccounts([]);
+    }
+  };
+
   useEffect(() => {
     loadCards();
-    accountService.getMyAccounts().then((data) => {
-      setAccounts(Array.isArray(data) ? data : []);
-    }).catch(() => setAccounts([]));
+    loadAccounts();
   }, []);
 
   // Fetch authorized persons when a business account is selected
@@ -296,11 +374,15 @@ export default function CardListPage() {
 
     setCreatingCard(true);
     try {
-      const requestData: { accountId: number; cardLimit?: number; cardType?: string; authorizedPersonId?: number; authorizedPerson?: Partial<import('@/types/celina2').AuthorizedPerson> } = {
+      const requestData: { accountId: number; cardLimit?: number; cardType?: string; cardCategory?: string; creditLimit?: number; authorizedPersonId?: number; authorizedPerson?: Partial<import('@/types/celina2').AuthorizedPerson> } = {
         accountId: Number(selectedAccountId),
         cardLimit: Number(newCardLimit) || 100000,
         cardType: cardBrand,
+        cardCategory: cardCategory,
       };
+      if (cardCategory === 'CREDIT') {
+        requestData.creditLimit = Number(creditLimit) || 0;
+      }
 
       if (isBusiness && cardRecipient === 'authorized') {
         if (showNewAuthorizedPerson) {
@@ -481,10 +563,36 @@ export default function CardListPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Tip kartice</Label>
-                <Input value="Debit" readOnly aria-readonly className="bg-muted/40 cursor-not-allowed" />
-                <p className="text-[11px] text-muted-foreground">Trenutno podrzavamo samo Debit kartice.</p>
+                <Label>Tip placanja *</Label>
+                <Select value={cardCategory} onValueChange={(val) => setCardCategory(val as 'DEBIT' | 'CREDIT' | 'INTERNET_PREPAID')}>
+                  <SelectTrigger data-testid="card-category-select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DEBIT">Debit (direktan debit sa racuna)</SelectItem>
+                    <SelectItem value="CREDIT">Credit (kartica na rate)</SelectItem>
+                    <SelectItem value="INTERNET_PREPAID">Internet Prepaid (odvojen balance)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  {cardCategory === 'DEBIT' && 'Skida se sa povezanog racuna pri placanju.'}
+                  {cardCategory === 'CREDIT' && 'Banka odobrava kreditni limit; mesecna otplata.'}
+                  {cardCategory === 'INTERNET_PREPAID' && 'Odvojen balance — prebacujes pare unapred za internet kupovine.'}
+                </p>
               </div>
+              {cardCategory === 'CREDIT' && (
+                <div className="space-y-2">
+                  <Label>Kreditni limit (RSD) *</Label>
+                  <Input
+                    type="number"
+                    min="1000"
+                    value={creditLimit}
+                    onChange={(e) => setCreditLimit(e.target.value)}
+                    data-testid="credit-limit-input"
+                  />
+                  <p className="text-[11px] text-muted-foreground">Maksimalni iznos koji banka odobrava na rate.</p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Limit kartice (RSD)</Label>
                 <Input type="number" value={newCardLimit} onChange={(e) => setNewCardLimit(e.target.value)} />
@@ -665,6 +773,71 @@ export default function CardListPage() {
                   <span className="font-semibold">{formatAmount(card.cardLimit ?? card.limit)} RSD</span>
                 </div>
 
+                {/* INTERNET_PREPAID: prikaz balance + Dopuni/Povuci */}
+                {card.cardCategory === 'INTERNET_PREPAID' && (
+                  <>
+                    <div className="flex justify-between text-sm border-t pt-2">
+                      <span className="text-muted-foreground">Balance na kartici</span>
+                      <span className="font-semibold font-mono text-cyan-600 dark:text-cyan-400" data-testid={`prepaid-balance-${card.id}`}>
+                        {formatAmount(card.prepaidBalance ?? 0)} RSD
+                      </span>
+                    </div>
+                    {card.status === 'ACTIVE' && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          data-testid={`card-topup-${card.id}`}
+                          onClick={() => {
+                            setTopUpCardId(card.id);
+                            setTopUpDirection('top-up');
+                            setTopUpAmount('');
+                            setTopUpAccountId(accounts[0] ? String(accounts[0].id) : '');
+                          }}
+                        >
+                          <Plus className="mr-1 h-3.5 w-3.5" />
+                          Dopuni
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          disabled={(card.prepaidBalance ?? 0) <= 0}
+                          data-testid={`card-withdraw-${card.id}`}
+                          onClick={() => {
+                            setTopUpCardId(card.id);
+                            setTopUpDirection('withdraw');
+                            setTopUpAmount('');
+                            setTopUpAccountId(accounts[0] ? String(accounts[0].id) : '');
+                          }}
+                        >
+                          <Wifi className="mr-1 h-3.5 w-3.5 rotate-180" />
+                          Povuci
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* CREDIT: prikaz creditLimit + outstanding */}
+                {card.cardCategory === 'CREDIT' && (
+                  <div className="border-t pt-2 space-y-1.5">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Kreditni limit</span>
+                      <span className="font-semibold font-mono text-amber-600 dark:text-amber-400">
+                        {formatAmount(card.creditLimit ?? 0)} RSD
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Dugovanje</span>
+                      <span className="font-semibold font-mono text-red-600 dark:text-red-400">
+                        {formatAmount(card.outstandingBalance ?? 0)} RSD
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Expiry */}
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Istice</span>
@@ -773,6 +946,83 @@ export default function CardListPage() {
                 }}
               >
                 Blokiraj
+              </Button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      {/* Top-up / withdraw dialog za INTERNET_PREPAID kartice */}
+      <Dialog.Root open={topUpCardId !== null} onOpenChange={(open) => !open && setTopUpCardId(null)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-background p-6 shadow-2xl" data-testid="card-topup-dialog">
+            <Dialog.Title className="text-lg font-semibold">
+              {topUpDirection === 'top-up' ? 'Dopuna prepaid kartice' : 'Povlacenje sa prepaid kartice'}
+            </Dialog.Title>
+            <Dialog.Description className="mt-2 text-sm text-muted-foreground">
+              {topUpDirection === 'top-up'
+                ? 'Prebacuje iznos sa izabranog racuna na karticu.'
+                : 'Prebacuje iznos sa kartice nazad na izabrani racun.'}
+            </Dialog.Description>
+            <div className="mt-4 space-y-3">
+              <div className="space-y-1">
+                <Label>{topUpDirection === 'top-up' ? 'Sa racuna' : 'Na racun'} *</Label>
+                <Select value={topUpAccountId} onValueChange={setTopUpAccountId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Izaberite racun" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts.filter((a) => a.status === 'ACTIVE').map((a) => (
+                      <SelectItem key={a.id} value={String(a.id)}>
+                        {a.accountNumber} ({a.currency || 'RSD'}) | {formatAmount(a.availableBalance)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Iznos *</Label>
+                <Input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={topUpAmount}
+                  onChange={(e) => setTopUpAmount(e.target.value)}
+                  data-testid="topup-amount-input"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setTopUpCardId(null)} disabled={topUpBusy}>Otkazi</Button>
+              <Button
+                data-testid="topup-confirm-button"
+                disabled={topUpBusy || !topUpAccountId || !Number.isFinite(Number(topUpAmount)) || Number(topUpAmount) <= 0}
+                onClick={async () => {
+                  if (topUpCardId === null) return;
+                  setTopUpBusy(true);
+                  try {
+                    const amount = Number(topUpAmount);
+                    if (topUpDirection === 'top-up') {
+                      await cardService.topUp(topUpCardId, Number(topUpAccountId), amount);
+                      toast.success(`Kartica je dopunjena za ${amount} RSD.`);
+                    } else {
+                      await cardService.withdraw(topUpCardId, Number(topUpAccountId), amount);
+                      toast.success(`Povuceno ${amount} RSD sa kartice na racun.`);
+                    }
+                    await loadCards();
+                    await loadAccounts();
+                    setTopUpCardId(null);
+                  } catch (err) {
+                    toast.error(getErrorMessage(err, topUpDirection === 'top-up' ? 'Dopuna nije uspela.' : 'Povlacenje nije uspelo.'));
+                  } finally {
+                    setTopUpBusy(false);
+                  }
+                }}
+              >
+                {topUpBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {topUpDirection === 'top-up' ? 'Dopuni' : 'Povuci'}
               </Button>
             </div>
           </Dialog.Content>

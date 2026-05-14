@@ -494,7 +494,9 @@ export default function AccountListPage() {
                       </div>
 
                       {/* Balance — T4A-021 fix: jasniji label "Stanje sa rezervisanim" vs "Raspolozivo"
-                          umesto generic "Ukupno" koje nije ocigledno. */}
+                          umesto generic "Ukupno" koje nije ocigledno.
+                          T4A-005 + T4A-019 fix: prikaz rezervisanih sredstava kao zaseban red sa
+                          amber bojom kad je > 0 (vidljivo posle OTC accept ili interbank 2PC prepare). */}
                       <div className="mb-4">
                         <p className="text-2xl font-bold font-mono tabular-nums tracking-tight" title="Raspolozivo stanje (bez rezervisanih sredstava)">
                           {formatBalance(account.availableBalance, '')}
@@ -503,6 +505,15 @@ export default function AccountListPage() {
                         <p className="text-xs text-muted-foreground mt-0.5" title="Ukupno stanje racuna ukljucujuci rezervisana sredstva">
                           Stanje sa rezervisanim: {formatBalance(account.balance, account.currency)}
                         </p>
+                        {Number(account.balance ?? 0) - Number(account.availableBalance ?? 0) > 0.001 && (
+                          <p
+                            className="text-xs mt-1 font-mono text-amber-600 dark:text-amber-400"
+                            data-testid={`account-reserved-${account.id}`}
+                            title="Sredstva privremeno rezervisana za OTC pregovor ili medjubankarsku transakciju"
+                          >
+                            Rezervisano: {formatBalance(Number(account.balance) - Number(account.availableBalance), account.currency)}
+                          </p>
+                        )}
                       </div>
 
                       {/* Limit mini bars */}

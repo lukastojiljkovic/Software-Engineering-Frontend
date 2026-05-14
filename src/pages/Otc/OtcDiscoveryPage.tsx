@@ -76,6 +76,12 @@ export default function OtcDiscoveryPage() {
   };
 
   const submitOffer = async (listing: OtcListing) => {
+    // T4A-012 fix: spreciti race kad korisnik brzo klikne Posalji vise puta ili na
+    // razlicitim formama. Ako je vec u toku jedna submisija, ignorisi sledeci klik.
+    if (submittingListingId !== null) {
+      toast.info('Sacekajte da se prethodna ponuda zavrsi...');
+      return;
+    }
     const qty = Number(formState.quantity);
     const price = Number(formState.pricePerStock);
     const premium = Number(formState.premium);
@@ -204,6 +210,8 @@ export default function OtcDiscoveryPage() {
                             <Button
                               size="sm"
                               variant={openedListingId === listing.listingId ? 'secondary' : 'default'}
+                              // T4A-012: disable sve trigger button-e dok je u toku jedna submisija
+                              disabled={submittingListingId !== null && submittingListingId !== listing.listingId}
                               onClick={() =>
                                 openedListingId === listing.listingId
                                   ? setOpenedListingId(null)

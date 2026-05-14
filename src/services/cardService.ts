@@ -33,7 +33,24 @@ export const cardService = {
     await api.patch(`/cards/${cardId}/limit`, { cardLimit });
   },
 
-  submitRequest: async (data: { accountId: number; cardLimit?: number; authorizedPersonId?: number; authorizedPerson?: Partial<AuthorizedPerson> }): Promise<unknown> => {
+  /**
+   * Dopuna INTERNET_PREPAID kartice — skida amount sa sourceAccountId i dodaje na
+   * Card.prepaidBalance. BE validira ownership i kategoriju.
+   */
+  topUp: async (cardId: number, sourceAccountId: number, amount: number): Promise<Card> => {
+    const response = await api.post<Card>(`/cards/${cardId}/top-up`, { sourceAccountId, amount });
+    return response.data;
+  },
+
+  /**
+   * Povlacenje sa INTERNET_PREPAID kartice nazad na racun — obrnut smer od top-up-a.
+   */
+  withdraw: async (cardId: number, targetAccountId: number, amount: number): Promise<Card> => {
+    const response = await api.post<Card>(`/cards/${cardId}/withdraw`, { targetAccountId, amount });
+    return response.data;
+  },
+
+  submitRequest: async (data: { accountId: number; cardLimit?: number; cardType?: string; cardCategory?: string; creditLimit?: number; authorizedPersonId?: number; authorizedPerson?: Partial<AuthorizedPerson> }): Promise<unknown> => {
     const response = await api.post('/cards/requests', data);
     return response.data;
   },

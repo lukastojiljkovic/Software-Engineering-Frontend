@@ -95,10 +95,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userId = cli.id;
           firstName = cli.firstName || firstName;
           lastName = cli.lastName || lastName;
+          // T4A-017: ako BE javi canTradeStocks, dodaj TRADE_STOCKS u permissions.
+          // Stari klijenti (bez polja) tretiraju se kao true radi backwards-compat.
+          const canTrade = (cli as unknown as { canTradeStocks?: boolean }).canTradeStocks;
+          if (canTrade !== false) {
+            permissions.push(Permission.TRADE_STOCKS);
+          }
+        } else {
+          // Ako nismo uspeli da resolve-ujemo klijenta, ostavi TRADE_STOCKS (default true)
+          permissions.push(Permission.TRADE_STOCKS);
         }
       } catch {
         // Lookup nije obavezan za login flow — ako padne, ostavljamo userId=0,
         // a OTC akcije koje zavise od identiteta će biti sakrivene (fail-safe).
+        // TRADE_STOCKS dajemo po default-u kako ne bi razbili postojeci flow.
+        permissions.push(Permission.TRADE_STOCKS);
       }
     }
 
