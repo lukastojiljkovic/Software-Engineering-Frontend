@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PortfolioPage from './PortfolioPage';
 import { renderWithProviders } from '../../test/test-utils';
@@ -370,5 +370,42 @@ describe('PortfolioPage', () => {
 
     // Drugi klik (collapse) ne sme da pravi novi BE poziv — rezultat je keširan.
     expect(mockGetDividendsByPosition).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows error message when dividend endpoint fails with a non-404 error', async () => {
+    const user = userEvent.setup();
+    mockGetDividendsByPosition.mockRejectedValue({ response: { status: 500 } });
+    renderWithProviders(<PortfolioPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dividend-toggle-1')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('dividend-toggle-1'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dividend-history-error')).toBeInTheDocument();
+    });
+  });
+
+  it('renders em-dash for tax on a tax-exempt (EMPLOYEE) dividend', async () => {
+    const user = userEvent.setup();
+    mockGetDividendsByPosition.mockResolvedValue([
+      { ...mockDividend, id: 9, taxExempt: true, tax: 0 },
+    ]);
+    renderWithProviders(<PortfolioPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dividend-toggle-1')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('dividend-toggle-1'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dividend-history-table')).toBeInTheDocument();
+    });
+    // Tax-exempt red prikazuje '—' umesto iznosa poreza.
+    const table = screen.getByTestId('dividend-history-table');
+    expect(within(table).getByText('—')).toBeInTheDocument();
   });
 });
