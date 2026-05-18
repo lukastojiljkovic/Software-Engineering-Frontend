@@ -38,6 +38,32 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
+/*
+ * TODO [FE4 - Statistika fondova | Developer: Jovan Krunic]
+ *
+ * Na detaljnoj stranici fonda prikazati sve metrike performansi i prosiriti grafike:
+ *
+ *  1. Kartica / sekcija "Metrike performansi" (pored ili ispod postojeceg grafa):
+ *     - Anualizovani prinos (%) — fundStatisticsService.getFundStatistics(fundId);
+ *     - Sharpe ratio (Prinos/Rizik);
+ *     - Maksimalni drawdown (%) — crvena boja;
+ *     - Volatilnost (%) — godisnja standardna devijacija.
+ *     Svaku metriku prikazati kao <Card> chip sa naslovom i vrednoscu
+ *     (paritet sa KPI chip-ovima na OtcHubPage i HomePage).
+ *
+ *  2. Prosiriti postojeci grafik istorijske vrednosti fonda:
+ *     - Dodati drugu liniju / oblast "Prosek svih fondova" (benchmark linija)
+ *       iz fundStatisticsService.getBenchmarkPerformance(period);
+ *     - Koristiti razlicitu boju (npr. amber) i isprekidanu liniju za benchmark;
+ *     - Legenda ispod grafa sa objasnjenjima obe linije.
+ *
+ *  3. Opcionalni "Uporedni grafik" tab sa mogucnoscu biranja vise fondova
+ *     za poredjenje (MultiSelectFundCombobox + vise linija na istom ResponsiveContainer).
+ *
+ *  Tipove FundStatistics i BenchmarkPoint dodati u src/types/celina4.ts.
+ *  Servis: src/services/fundStatisticsService.ts (isti kao u FundsDiscoveryPage).
+ */
+
 type PerfPeriod = 'month' | 'quarter' | 'year';
 
 function getPerfRange(period: PerfPeriod): { from: string; to: string } {

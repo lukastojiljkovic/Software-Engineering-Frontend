@@ -27,6 +27,34 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
+/*
+ * TODO [FE4 - Statistika fondova | Developer: Jovan Krunic]
+ *
+ * Prosiriti tabelu fondova dodatnim kolonama sa metrikama i omoguciti sortiranje:
+ *
+ *  1. Novi servis fundStatisticsService (src/services/fundStatisticsService.ts):
+ *     - getFundStatistics(fundId): GET /funds/{id}/statistics
+ *       vraca { annualizedReturn: number, sharpeRatio: number,
+ *               maxDrawdown: number, volatility: number }.
+ *     - getAllFundStatistics(): GET /funds/statistics — batch endpoint za sve fondove
+ *       (jedan poziv umesto N poziva u petlji).
+ *
+ *  2. Nove kolone u tabeli (dodati u TableHeader i TableRow):
+ *     - "Anualizovani prinos (%)" — formatovati sa 2 decimale + % suffix;
+ *     - "Prinos/Rizik (Sharpe)" — Sharpe ratio, 2 decimale;
+ *     - "Max Drawdown (%)" — negativna vrednost, prikazati crveno;
+ *     - "Volatilnost (%)" — prikazati sa 2 decimale.
+ *
+ *  3. Sortiranje — prosiriti SortField tip novim vrednostima:
+ *     'annualizedReturn' | 'sharpeRatio' | 'maxDrawdown' | 'volatility'
+ *     i dodati klik na zaglavlje kolone (ArrowUpDown/ArrowUp/ArrowDown ikona).
+ *
+ *  4. Ucitavanje: fetchovati statistike paralelno sa listom fondova (Promise.all)
+ *     i spojiti podatke po fundId pre renderovanja.
+ *
+ *  Tip FundStatistics dodati u src/types/celina4.ts.
+ */
+
 type SortField = 'name' | 'fundValue' | 'profit' | 'minimumContribution';
 type SortDirection = 'asc' | 'desc';
 

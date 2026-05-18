@@ -1,5 +1,29 @@
 import { z } from 'zod';
 
+/*
+ * TODO [FE1 - Validacija unosa | Developer: Marta Suljagic]
+ *
+ * Dodati / ojacati sledece validacije i primeniti ih na sve forme za
+ * kreiranje i izmenu korisnika (klijenata) i zaposlenih:
+ *
+ *  1. Telefon — dozvoliti samo cifre uz opcioni vodeci znak '+';
+ *     primer regex: /^\+?[0-9]{6,15}$/ (E.164 kompatibilan opseg).
+ *     Azurirati phoneSchema ili dodati strictPhoneSchema.
+ *
+ *  2. Datum rodjenja — mora biti u proslosti (< today);
+ *     koristiti z.string().refine(val => new Date(val) < new Date(), ...)
+ *     ili z.date().max(new Date(), ...).
+ *     Primeniti u createClientSchema, editClientSchema, createEmployeeSchema.
+ *
+ *  3. Email format — emailSchema vec postoji (z.string().email()), ali proveriti
+ *     da li je dodat i na edit-forme (EmployeeEditPage, ClientEditPage).
+ *     Ukoliko nije, uvesti emailSchema iz ovog fajla umesto lokalnih duplikata.
+ *
+ *  Napomena: izmene sheme automatski propagiraju validaciju na FE forme
+ *  koje koriste react-hook-form + zodResolver — nije potrebna promena logike u
+ *  komponentama, samo azuriranje schema objekata.
+ */
+
 // ============================================================
 // Validacione šeme za Banka 2025 - Celina 1
 // Password constraints: min 8, max 32, 2 broja, 1 veliko, 1 malo

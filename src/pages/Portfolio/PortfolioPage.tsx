@@ -39,6 +39,33 @@ import {
 } from '@/components/ui/table';
 import MyFundsTab from '@/pages/Funds/MyFundsTab';
 
+/*
+ * TODO [FE4 - Istorija dividendi | Developer: Jovan Krunic]
+ *
+ * Uz svaku STOCK poziciju u portfoliju prikazati istoriju primljenih dividendi:
+ *
+ *  1. Novi servis dividendService (src/services/dividendService.ts):
+ *     - getDividendHistory(listingId): GET /portfolio/dividends?listingId=X
+ *       vraca listu { date: string, amountGross: number, taxWithheld: number,
+ *       amountNet: number, currency: string }.
+ *     - getMyDividendSummary(): GET /portfolio/dividends/summary — ukupno primljeno
+ *       po valuti (za KPI chip na vrhu stranice).
+ *
+ *  2. Prikaz po poziciji — jedna od sledecih opcija:
+ *     (a) Nova kolona "Dividende" u tabeli hartija sa ukupnim iznosom i
+ *         klikom koji razvija inlajn red sa historijom;
+ *     (b) Poseban "Dividende" tab pored "Moje hartije" i "Moji fondovi";
+ *     (c) Expand dugme po redu koje otvara Accordion sa listom isplata.
+ *
+ *  3. Svaki red istorije prikazuje: datum isplate, bruto iznos, porez po odbitku,
+ *     neto iznos, valuta — sve formatirane kroz formatAmount + sr-RS locale.
+ *
+ *  4. Opcionalno: KPI chip "Ukupne dividende YTD" u summary kartici na vrhu
+ *     (paritet sa Neto vrednost / ROI chipovima).
+ *
+ *  Tip podataka dodati u src/types/celina3.ts (DividendRecord interface).
+ */
+
 function formatPercent(value: number | null | undefined): string {
   const num = typeof value === 'number' ? value : parseNumber(value);
   return `${num.toLocaleString('sr-RS', {

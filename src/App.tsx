@@ -87,6 +87,37 @@ const ArbitroOverlay = lazy(() =>
   import('./components/assistant/ArbitroOverlay').then((m) => ({ default: m.ArbitroOverlay }))
 );
 
+/*
+ * TODO [Razvojni ciklus - registracija novih ruta]
+ *
+ * Registrovati nove rute prateCI postojeci obrazac sa ProtectedRoute cuvarima.
+ * Svaka ruta zahteva kreiranja odgovarajuCe page komponente pre dodavanja.
+ *
+ * [FE1] NotificationsPage — dostupna svim ulogovanim korisnicima (authenticated):
+ *   <Route path="/notifications" element={<NotificationsPage />} />
+ *   Smestiti unutar <ProtectedRoute> (nije noAgentOnly ni employeeOnly).
+ *
+ * [FE2] WatchlistPage i PriceAlertsPage — authenticated, preporuceno noAgentOnly
+ *       (klijenti i supervizori koji trguju; finalne cuvare odredjuje FE lead):
+ *   <Route path="/watchlist" element={<WatchlistPage />} />
+ *   <Route path="/price-alerts" element={<PriceAlertsPage />} />
+ *
+ * [FE3] RecurringOrdersPage — authenticated, noAgentOnly (kao ostale trgovinske rute):
+ *   <Route element={<ProtectedRoute noAgentOnly />}>
+ *     <Route path="/recurring-orders" element={<RecurringOrdersPage />} />
+ *   </Route>
+ *
+ *   AuditLogPage — supervisorOnly ili adminOnly (potvrditi sa BE leadom):
+ *   <Route element={<ProtectedRoute supervisorOnly />}>
+ *     <Route path="/audit-log" element={<AuditLogPage />} />
+ *   </Route>
+ *
+ * [FE4] OtcNegotiationHistoryPage — noAgentOnly (kao ostale OTC rute u bloku /otc):
+ *   Dodati unutar postojeCeg <Route element={<ProtectedRoute noAgentOnly />}> bloka:
+ *   <Route path="/otc/negotiation-history" element={<OtcNegotiationHistoryPage />} />
+ *
+ * Tacne putanje i cuvare finalizuje FE lead pre merge-a feature grane.
+ */
 export default function App() {
   return (
     <>

@@ -41,6 +41,35 @@ interface SidebarItem {
   icon: React.ReactNode;
 }
 
+/*
+ * TODO [Razvojni ciklus - novi navigacioni linkovi]
+ *
+ * Dodati sledece linkove u odgovarajuce sekcije prateCI postojeci SidebarItem obrazac
+ * ({ label, path, icon }). Svaki link zahteva import odgovarajuce Lucide ikone.
+ *
+ * [FE2] "Watchlist" i "Cenovni alarmi" — klijentska/trgovinska sekcija
+ *       (dodati u `clientLinks` niz ili u zaseban `tradingLinks` niz za klijente
+ *        koji imaju TRADE_STOCKS permisiju, slicno canAccessOtc logiCI):
+ *   { label: 'Watchlist',        path: '/watchlist',     icon: <Bookmark ... /> }
+ *   { label: 'Cenovni alarmi',   path: '/price-alerts',  icon: <BellRing  ... /> }
+ *
+ * [FE3] "Trajni nalozi" — trgovinska sekcija (noAgentOnly klijenti i supervizori):
+ *   { label: 'Trajni nalozi', path: '/recurring-orders', icon: <Repeat ... /> }
+ *
+ *   "Audit log" — sekcija za zaposlene (samo supervizor/admin):
+ *   Prikazati uslovno: if (isAdmin || isSupervisor)
+ *   { label: 'Audit log', path: '/audit-log', icon: <ScrollText ... /> }
+ *   Dodati u `employeeLinks` niz pored "Orderi" i "Aktuari".
+ *
+ * Pristup notifikacijama (FE1) je primarno realizovan kroz zvono u zaglavlju
+ * (Header komponenta — vidi TODO u MainLayout.tsx). Opcioni sidebar link:
+ *   { label: 'Notifikacije', path: '/notifications', icon: <Bell ... /> }
+ *   Moze se dodati u `clientLinks` (ili prikazati za sve role) ukoliko FE lead
+ *   odluci da je sidebar link potreban pored zvona u zaglavlju.
+ *
+ * Napomena: pre dodavanja linkova, odgovarajuce rute moraju biti registrovane
+ * u App.tsx (vidi TODO tamo). Redosled linkova u sidebar-u odredjuje FE lead.
+ */
 export default function ClientSidebar() {
   const { user, logout, isAdmin, isSupervisor } = useAuth();
   const [open, setOpen] = useState(false);
