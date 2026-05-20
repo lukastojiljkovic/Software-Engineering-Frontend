@@ -31,6 +31,25 @@ type OpenState =
   | { type: 'counter'; offerId: string }
   | null;
 
+const OUR_BANK_CODE = 'RN-222';
+
+/**
+ * T2-G UX polish (2026-05-20): odredi koja je moja uloga u inter-bank pregovoru.
+ * Per §3.6, accept moze samo BUYER cross-bank. Ako sam SELLER, sakrijemo "Prihvati"
+ * dugme i ostavimo samo "Kontraponuda" + "Odbij" (mirror BE wrapper poruke).
+ */
+function computeMyRoleInOffer(
+  offer: OtcInterbankOffer,
+  userId: number | null | undefined,
+  isEmployee: boolean,
+): 'BUYER' | 'SELLER' | null {
+  if (userId == null) return null;
+  const myCode = `${isEmployee ? 'E' : 'C'}-${userId}`;
+  if (offer.sellerBankCode === OUR_BANK_CODE && offer.sellerUserId === myCode) return 'SELLER';
+  if (offer.buyerBankCode === OUR_BANK_CODE && offer.buyerUserId === myCode) return 'BUYER';
+  return null;
+}
+
 type Props = {
   onAcceptedOffer?: () => void;
   onUnreadChange?: (count: number) => void;
@@ -285,6 +304,7 @@ export default function OtcInterBankOffersTab({ onAcceptedOffer, onUnreadChange,
                   const deviation = computeOfferDeviation(offer.pricePerStock, offer.currentPrice);
                   const isAcceptOpen = openState?.type === 'accept' && openState.offerId === offer.offerId;
                   const isCounterOpen = openState?.type === 'counter' && openState.offerId === offer.offerId;
+                  const myRole = computeMyRoleInOffer(offer, user?.id, isEmployee);
 
                   return (
                     <Fragment key={offer.offerId}>
@@ -330,6 +350,18 @@ export default function OtcInterBankOffersTab({ onAcceptedOffer, onUnreadChange,
                             <Badge variant={offer.myTurn ? 'warning' : 'secondary'}>
                               {offer.myTurn ? 'Moj red' : 'Ceka drugu stranu'}
                             </Badge>
+                            {myRole && (
+                              <Badge
+                                variant="outline"
+                                className={
+                                  myRole === 'BUYER'
+                                    ? 'border-indigo-400 text-indigo-700 dark:text-indigo-300'
+                                    : 'border-amber-400 text-amber-700 dark:text-amber-300'
+                                }
+                              >
+                                Uloga: {myRole === 'BUYER' ? 'Kupac' : 'Prodavac'}
+                              </Badge>
+                            )}
                             <div className="text-xs text-muted-foreground">
                               {offer.waitingOnBankCode} / {offer.waitingOnUserId}
                             </div>
@@ -338,18 +370,25 @@ export default function OtcInterBankOffersTab({ onAcceptedOffer, onUnreadChange,
                         <TableCell className="text-right">
                           {offer.myTurn ? (
                             <div className="flex flex-wrap justify-end gap-1">
-                              <Button
-                                size="sm"
-                                variant="default"
-                                disabled={busyOfferId === offer.offerId}
-                                onClick={() =>
-                                  isAcceptOpen ? setOpenState(null) : openAcceptForm(offer)
-                                }
-                                className="bg-gradient-to-r from-emerald-500 to-green-600 text-white"
-                              >
-                                <Check className="mr-1 h-3.5 w-3.5" />
-                                Prihvati
-                              </Button>
+                              {/* T2-G: Prihvati moze SAMO kupac u cross-bank pregovoru
+                                  (per §3.6 — premium debit ide sa kupcevog racuna pa
+                                  coordinator runs na buyer-strani). Ako sam prodavac,
+                                  prikazem samo Kontraponudu + Odbij. */}
+                              {myRole === 'BUYER' && (
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  disabled={busyOfferId === offer.offerId}
+                                  onClick={() =>
+                                    isAcceptOpen ? setOpenState(null) : openAcceptForm(offer)
+                                  }
+                                  className="bg-gradient-to-r from-emerald-500 to-green-600 text-white"
+                                  title="Prihvati cross-bank ponudu (premium se odmah debituje)"
+                                >
+                                  <Check className="mr-1 h-3.5 w-3.5" />
+                                  Prihvati
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -371,6 +410,11 @@ export default function OtcInterBankOffersTab({ onAcceptedOffer, onUnreadChange,
                                 <X className="mr-1 h-3.5 w-3.5" />
                                 Odbij
                               </Button>
+                              {myRole === 'SELLER' && (
+                                <div className="basis-full mt-1 text-[11px] text-muted-foreground italic">
+                                  Cross-bank prihvatanje moze samo kupac ({offer.buyerName}).
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">—</span>
