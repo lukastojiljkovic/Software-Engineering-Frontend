@@ -55,11 +55,15 @@ const activeOffer = {
   listingName: 'Apple Inc.',
   listingCurrency: 'USD',
   currentPrice: 100,
-  buyerBankCode: 'BANKA1',
-  buyerUserId: 'buyer-1',
+  // T2-G role-aware UI: BUYER bank code mora biti 'RN-222' i buyerUserId='C-1'
+  // (matching mocked auth user) da bi `computeMyRoleInOffer` vratio 'BUYER'.
+  // SELLER strana je u partner banci (RN-111) — bez toga `Prihvati` button
+  // se sakriva i test za accept flow puca jer button ne postoji u DOM-u.
+  buyerBankCode: 'RN-222',
+  buyerUserId: 'C-1',
   buyerName: 'Stefan Jovanovic',
-  sellerBankCode: 'BANKA2',
-  sellerUserId: 'seller-1',
+  sellerBankCode: 'RN-111',
+  sellerUserId: 'C-15',
   sellerName: 'Remote Seller',
   quantity: 5,
   pricePerStock: 102,
@@ -140,8 +144,8 @@ describe('OtcInterBankOffersTab', () => {
     });
 
     expect(screen.getByText('AAPL')).toBeInTheDocument();
-    expect(screen.getByText('Kupac: BANKA1')).toBeInTheDocument();
-    expect(screen.getByText('Prodavac: BANKA2')).toBeInTheDocument();
+    expect(screen.getByText('Kupac: RN-222')).toBeInTheDocument();
+    expect(screen.getByText('Prodavac: RN-111')).toBeInTheDocument();
     expect(screen.getByText('Moj red')).toBeInTheDocument();
     expect(screen.getByText('+2.0%')).toBeInTheDocument();
     expect(screen.queryByText('MSFT')).not.toBeInTheDocument();
