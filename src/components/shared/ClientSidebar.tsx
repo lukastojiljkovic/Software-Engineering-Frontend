@@ -48,19 +48,18 @@ interface SidebarItem {
 }
 
 export default function ClientSidebar() {
-  const { user, logout, isAdmin, isSupervisor } = useAuth();
+  // FE-AUTH-05: koristimo `isAdmin/isSupervisor/isAgent` iskljucivo iz AuthContext-a.
+  // Stari pristup (lokalno parsiranje `user?.role` + `userType` fallback +
+  // `perms.includes('AGENT')`) je duplirao logiku iz AuthContext-a i dozvoljavao
+  // divergenciju (npr. AuthContext racuna isAdmin po permission-u, lokalni kod
+  // gleda samo `role`). `userType` fallback grana je dead — AuthUser tip nema
+  // to polje, pa je `(user as { ... userType }).userType` uvek undefined.
+  const { user, logout, isAdmin, isSupervisor, isAgent } = useAuth();
   const [open, setOpen] = useState(false);
 
-  const role = String(
-    (user as { role?: string; userType?: string } | null)?.role ??
-    (user as { role?: string; userType?: string } | null)?.userType ??
-    ''
-  ).toUpperCase();
-
-  const isEmployeeOrAdmin =
-    isAdmin ||
-    role === 'ADMIN' ||
-    role === 'EMPLOYEE';
+  // Employee/admin se gledaju po role-u na user objektu. AuthContext computed
+  // isAdmin pokriva permission-based admin path (ADMIN permission bez role='ADMIN').
+  const isEmployeeOrAdmin = isAdmin || user?.role === 'ADMIN' || user?.role === 'EMPLOYEE';
 
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -72,9 +71,8 @@ export default function ClientSidebar() {
   const getRoleName = () => {
     if (isAdmin) return 'Administrator';
     if (isSupervisor) return 'Supervizor';
-    const perms = Array.isArray(user?.permissions) ? user.permissions : [];
-    if (perms.includes('AGENT')) return 'Agent';
-    if (role === 'EMPLOYEE') return 'Zaposleni';
+    if (isAgent) return 'Agent';
+    if (user?.role === 'EMPLOYEE') return 'Zaposleni';
     return 'Klijent';
   };
 
@@ -101,15 +99,21 @@ export default function ClientSidebar() {
   // T4A-017 fix: klijent sad mora imati eksplicitnu TRADE_STOCKS permisiju
   // (mapiranu iz canTradeStocks polja u Client entity-ju). Default true za
   // backwards-compat, supervizor moze revokovati preko PATCH /clients/{id}/trading.
+  //
+  // FE-AUTH-05: `isAgent` dolazi iz AuthContext-a. Ranija lokalna derivacija
+  // `perms.includes('AGENT') && !isSupervisor && !isAdmin` je reimplementirala
+  // istu logiku — sad samo proveravamo `isAgent && !isSupervisor && !isAdmin`
+  // (dual-role agent+supervisor zadrzava OTC pristup po istom pravilu kao
+  // u ProtectedRoute `noAgentOnly` matcher-u).
   const perms: string[] = Array.isArray(user?.permissions) ? (user!.permissions as string[]) : [];
-  const isAgent = perms.includes('AGENT') && !isSupervisor && !isAdmin;
-  const clientCanTrade = role === 'CLIENT' && perms.includes('TRADE_STOCKS');
-  const canAccessOtc = !isAgent && (isSupervisor || isAdmin || clientCanTrade);
+  const agentBlocked = isAgent && !isSupervisor && !isAdmin;
+  const clientCanTrade = user?.role === 'CLIENT' && perms.includes('TRADE_STOCKS');
+  const canAccessOtc = !agentBlocked && (isSupervisor || isAdmin || clientCanTrade);
 
   // Trgovinski feature-i (Watchlist, Cenovni alarmi, Trajni nalozi/DCA)
   // dostupni su svim koji mogu da trguju — klijenti (sa TRADE_STOCKS),
   // supervizori i admin. Agenti su iskljuceni po istom pravilu kao OTC.
-  const canAccessTradingFeatures = !isAgent && (isSupervisor || isAdmin || clientCanTrade);
+  const canAccessTradingFeatures = !agentBlocked && (isSupervisor || isAdmin || clientCanTrade);
 
   const tradingLinks: SidebarItem[] = useMemo(
     () => {

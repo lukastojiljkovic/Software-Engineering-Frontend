@@ -189,14 +189,17 @@ export default function EmployeeEditPage() {
     setError('');
 
     try {
-      if (!data.isActive && employee?.isActive) {
-        await employeeService.deactivate(Number(id));
-      }
-
+      // FE-AUTH-06: Jedinstven PUT zahtev koji obuhvata SVA polja ukljucujuci
+      // `isActive`. Ranije: 2 sekvencijalna poziva (deactivate -> update).
+      // Problem starog pristupa: ako deactivate uspe (PUT 1) a update padne
+      // (PUT 2), nalog ostaje deaktiviran ali ostale promene (ime, telefon,
+      // permisije) se gube — DB u nekonzistentnom stanju.
+      //
+      // BE `PUT /employees/{id}` vec prihvata `active` polje u istom request
+      // body-ju (verifikovano u EmployeeServiceImpl.updateEmployee:137 sa
+      // `if (request.getActive() != null) employee.setActive(request.getActive());`),
+      // pa jedan poziv pokriva i deaktivaciju i profile update atomicno.
       const updateData = { ...data, permissions };
-      if (!data.isActive && employee?.isActive) {
-        delete (updateData as Record<string, unknown>).isActive;
-      }
       await employeeService.update(Number(id), updateData);
 
       const removedSupervisor =

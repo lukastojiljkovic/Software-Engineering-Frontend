@@ -76,7 +76,7 @@ export default function OtcContractsPage() {
     return () => { cancelled = true; };
   }, [statusFilter, isEmployee]);
 
-  const filteredContracts = useMemo(() => contracts, [contracts]);
+  // FE-OTC-06 fix: identity useMemo `useMemo(() => contracts, [contracts])` uklonjen kao dead code.
 
   const handleExercise = async (contract: OtcContract) => {
     if (!window.confirm(`Iskoristiti ugovor za ${contract.quantity} x ${contract.listingTicker}?`)) return;
@@ -196,7 +196,7 @@ export default function OtcContractsPage() {
                   <div key={i} className="h-14 animate-pulse rounded bg-muted/50" />
                 ))}
               </div>
-            ) : filteredContracts.length === 0 ? (
+            ) : contracts.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground text-sm">
                 Nemate sklopljene OTC ugovore.
               </div>
@@ -216,7 +216,7 @@ export default function OtcContractsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredContracts.map((c) => {
+                  {contracts.map((c) => {
                     const inTheMoney =
                       c.currentPrice != null && c.strikePrice != null && c.currentPrice > c.strikePrice;
                     return (

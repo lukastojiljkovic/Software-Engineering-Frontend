@@ -148,20 +148,25 @@ export default function NotificationsPage() {
     async (n: NotificationDto) => {
       // Optimisticki update — odmah obelezi kao procitano u UI-u.
       if (!n.read) {
+        // FE-FND-06 fix: capture filter mode at click time; ako se filter
+        // promenio izmedju click-a i odgovora servera, NE radimo rollback —
+        // items array vise nije isti pa bi rollback narusio UI.
+        const filterAtClick = filter;
         setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
         try {
           await notificationService.markAsRead(n.id);
           await refreshUnreadCount();
         } catch {
-          // Vrati state ako padne.
-          setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: false } : x)));
+          if (filter === filterAtClick) {
+            setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: false } : x)));
+          }
           toast.error('Neuspeh oznacavanja notifikacije.');
         }
       }
       const link = resolveDeepLink(n);
       if (link) navigate(link);
     },
-    [navigate, refreshUnreadCount]
+    [filter, navigate, refreshUnreadCount]
   );
 
   const hasItems = items.length > 0;

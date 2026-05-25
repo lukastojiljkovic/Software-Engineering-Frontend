@@ -124,15 +124,7 @@ function InfoRow({
   );
 }
 
-type StatusFilter = 'ALL' | OrderStatus;
-
-const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: 'ALL', label: 'Svi' },
-  { value: OrderStatus.PENDING, label: 'Na cekanju' },
-  { value: OrderStatus.APPROVED, label: 'Odobreni' },
-  { value: OrderStatus.DONE, label: 'Zavrseni' },
-  { value: OrderStatus.DECLINED, label: 'Odbijeni' },
-];
+// FE-TRD-01 fix: StatusFilter / STATUS_FILTER_OPTIONS uklonjeni (chip filter dead code).
 
 export default function MyOrdersPage() {
   const navigate = useNavigate();
@@ -145,8 +137,7 @@ export default function MyOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
   const [cancelingOrderId, setCancelingOrderId] = useState<number | null>(null);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
-  // statusFilter je FE-strana chip; statusBeFilter se salje BE-u (status/dateFrom/dateTo/listingType).
+  // FE-TRD-01 fix: chip filter uklonjen kao redundantan; statusBeFilter (BE) je jedini izvor istine.
   const [statusBeFilter, setStatusBeFilter] = useState('');
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
@@ -280,7 +271,6 @@ export default function MyOrdersPage() {
     setDateFromFilter('');
     setDateToFilter('');
     setListingTypeFilter('');
-    setStatusFilter('ALL');
     setPage(0);
   }, []);
 
@@ -289,28 +279,6 @@ export default function MyOrdersPage() {
   );
 
   const sortedOrders = useMemo(() => [...orders].sort(sortByCreatedAtDesc), [orders]);
-
-  const statusCounts = useMemo(() => {
-    return sortedOrders.reduce(
-      (acc, order) => {
-        acc.total += 1;
-        acc[order.status] += 1;
-        return acc;
-      },
-      {
-        total: 0,
-        [OrderStatus.PENDING]: 0,
-        [OrderStatus.APPROVED]: 0,
-        [OrderStatus.DECLINED]: 0,
-        [OrderStatus.DONE]: 0,
-      }
-    );
-  }, [sortedOrders]);
-
-  const filteredOrders = useMemo(() => {
-    if (statusFilter === 'ALL') return sortedOrders;
-    return sortedOrders.filter((order) => order.status === statusFilter);
-  }, [sortedOrders, statusFilter]);
 
   const selectedOrderCommission = selectedOrder
     ? getCommission(selectedOrder.orderType, Number(selectedOrder.approximatePrice ?? 0), isEmployeeRole)
@@ -365,37 +333,9 @@ export default function MyOrdersPage() {
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <div className="h-5 w-1 rounded-full bg-gradient-to-b from-indigo-500 to-violet-600" />
-              <CardTitle>Filter po statusu</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {STATUS_FILTER_OPTIONS.map((option) => {
-              const count =
-                option.value === 'ALL'
-                  ? statusCounts.total
-                  : statusCounts[option.value] ?? 0;
-
-              return (
-                <Button
-                  key={option.value}
-                  variant={statusFilter === option.value ? 'default' : 'outline'}
-                  onClick={() => setStatusFilter(option.value)}
-                  className={
-                    statusFilter === option.value
-                      ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-semibold shadow-lg shadow-indigo-500/20'
-                      : ''
-                  }
-                >
-                  {option.label} ({count})
-                </Button>
-              );
-            })}
-          </CardContent>
-        </Card>
+        {/* FE-TRD-01 fix: chip filter (FE-strana) uklonjen kao redundantan; jedini
+            izvor istine je BE filter dropdown ispod (sav status + datum +
+            tip hartije). Reset dugme cisti SVE filtere (status/datum/tip). */}
 
         {/* Detaljni filteri istorije ordera (status, datum, tip hartije) */}
         <Card data-testid="orders-advanced-filters-card">
@@ -411,7 +351,7 @@ export default function MyOrdersPage() {
                 onClick={() => {
                   resetFilters();
                 }}
-                disabled={!hasActiveFilters && statusFilter === 'ALL'}
+                disabled={!hasActiveFilters}
                 data-testid="orders-reset-filters"
               >
                 <FilterX className="mr-2 h-4 w-4" />
@@ -572,20 +512,20 @@ export default function MyOrdersPage() {
                   </div>
                 ))}
               </div>
-            ) : filteredOrders.length === 0 ? (
+            ) : sortedOrders.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-14 text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                   <Inbox className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <h2 className="text-lg font-semibold">
-                  {statusFilter === 'ALL'
+                  {!hasActiveFilters
                     ? 'Nema kreiranih naloga'
-                    : 'Nema naloga za izabrani filter'}
+                    : 'Nema naloga za izabrane filtere'}
                 </h2>
                 <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                  {statusFilter === 'ALL'
+                  {!hasActiveFilters
                     ? 'Kada posaljete prvi nalog, ovde cete videti istoriju i status izvrsenja.'
-                    : 'Pokusajte sa drugim statusom filtera.'}
+                    : 'Pokusajte da resetujete filtere ili izaberete druge vrednosti.'}
                 </p>
               </div>
             ) : (
@@ -604,7 +544,7 @@ export default function MyOrdersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredOrders.map((order) => {
+                    {sortedOrders.map((order) => {
                       const DirectionIcon = getDirectionIcon(order.direction);
                       const execution = getOrderExecution(order);
                       const showExecutionProgress = shouldShowExecutionProgress(order);

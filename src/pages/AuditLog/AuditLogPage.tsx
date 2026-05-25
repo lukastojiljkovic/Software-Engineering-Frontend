@@ -117,11 +117,24 @@ export default function AuditLogPage() {
       });
       setPage(result);
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { message?: string } }; message?: string };
-      const message =
-        err?.response?.data?.message ??
-        err?.message ??
-        'Ucitavanje audit-log zapisa nije uspelo.';
+      // FE-TRD-03 fix: status-code aware error handling — daje korisniku konkretnu informaciju
+      // (403 = nemate dozvolu / 404 = endpoint ne postoji / ostalo = generic).
+      const err = e as {
+        response?: { status?: number; data?: { message?: string } };
+        message?: string;
+      };
+      const status = err?.response?.status;
+      let message: string;
+      if (status === 403) {
+        message = 'Nemate pristup audit-log zapisima (samo admin/supervizor).';
+      } else if (status === 404) {
+        message = 'Audit-log endpoint nije pronadjen.';
+      } else {
+        message =
+          err?.response?.data?.message ??
+          err?.message ??
+          'Ucitavanje audit-log zapisa nije uspelo.';
+      }
       setError(message);
       setPage(null);
       toast.error(message);

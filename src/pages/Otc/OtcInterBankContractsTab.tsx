@@ -245,12 +245,8 @@ export default function OtcInterBankContractsTab({ onActiveCountChange }: Props 
             } else {
               // Spec Celina 5 (Nova): mapiraj BE errorCode na lokalizovanu poruku
               // ako postoji; inace prikazi raw failureReason ili generican fallback.
-              toast.error(
-                pickFailureReason(
-                  data as { failureReason?: string; rejectionReason?: string; errorMessage?: string; errorCode?: string },
-                  'Inter-bank exercise je prekinut.',
-                ),
-              );
+              // FE-OTC-07 fix: pickFailureReason sad prihvata unknown — cast nije potreban.
+              toast.error(pickFailureReason(data, 'Inter-bank exercise je prekinut.'));
             }
             return;
           }
@@ -349,12 +345,8 @@ export default function OtcInterBankContractsTab({ onActiveCountChange }: Props 
         if (data.status === 'COMMITTED') {
           toast.success('Inter-bank exercise je u medjuvremenu finalizovan.');
         } else {
-          toast.error(
-            pickFailureReason(
-              data as { failureReason?: string; rejectionReason?: string; errorMessage?: string; errorCode?: string },
-              'Inter-bank exercise je prekinut.',
-            ),
-          );
+          // FE-OTC-07 fix: pickFailureReason sad prihvata unknown.
+          toast.error(pickFailureReason(data, 'Inter-bank exercise je prekinut.'));
         }
       } else {
         // Resetuj counter — useEffect ce automatski pokrenuti novi interval
@@ -442,12 +434,8 @@ export default function OtcInterBankContractsTab({ onActiveCountChange }: Props 
         if (transaction.status === 'COMMITTED') {
           toast.success('Inter-bank exercise je uspesno finalizovan.');
         } else {
-          toast.error(
-            pickFailureReason(
-              transaction as { failureReason?: string; rejectionReason?: string; errorMessage?: string; errorCode?: string },
-              'Inter-bank exercise je prekinut.',
-            ),
-          );
+          // FE-OTC-07 fix: pickFailureReason sad prihvata unknown.
+          toast.error(pickFailureReason(transaction, 'Inter-bank exercise je prekinut.'));
         }
       }
     } catch (error) {
@@ -920,10 +908,8 @@ export default function OtcInterBankContractsTab({ onActiveCountChange }: Props 
                 )}
 
                 {(() => {
-                  const tx = progressState.transaction as { failureReason?: string; rejectionReason?: string; errorMessage?: string; errorCode?: string };
-                  const localizedReason = (tx.failureReason || tx.rejectionReason || tx.errorMessage || tx.errorCode)
-                    ? pickFailureReason(tx, '')
-                    : '';
+                  // FE-OTC-07 fix: pickFailureReason sad prihvata unknown — cast nije potreban.
+                  const localizedReason = pickFailureReason(progressState.transaction, '');
                   return localizedReason !== '' ? (
                     <Alert variant="destructive" data-testid="saga-aborted-alert">
                       <XCircle className="h-4 w-4" />

@@ -324,17 +324,23 @@ export default function FundDetailsPage() {
     return () => { cancelled = true; };
   }, [id]);
 
-  // FE4 (7.2) — prosek performansi svih fondova (indeksiran na 100) za uporedni grafik.
+  // FE-FND-03 fix: SWR-style caching — sirov benchmark (mapirano po datumu,
+  // indeksirano na 100 per-fund pa prosečeno) fetcha se jednom on mount sa
+  // sirokim rangom (1 godinu unazad), pa se period change recomputuje od cache-a
+  // client-side. Pre fix-a: investmentFundService.list() + N getPerformance(...)
+  // se ponovo izvrsavalo na svakoj period change (N+1 pattern).
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
-    const range = getPerfRange(perfPeriod);
+    // Fetcha najsiri range (1 godinu) — sve "month"/"quarter" periode mogu
+    // se filtrirati klijent-side.
+    const wideRange = getPerfRange('year');
     void investmentFundService
       .list()
       .then((allFunds) =>
         Promise.allSettled(
           allFunds.map((f) =>
-            investmentFundService.getPerformance(f.id, range.from, range.to),
+            investmentFundService.getPerformance(f.id, wideRange.from, wideRange.to),
           ),
         ),
       )
@@ -359,9 +365,11 @@ export default function FundDetailsPage() {
         if (!cancelled) setBenchmarkByDate(new Map());
       });
     return () => { cancelled = true; };
-  }, [id, perfPeriod]);
+  }, [id]); // <-- jedini dep je `id`; period change ne re-fetcha.
 
   // Uporedni grafik: serija fonda (indeks 100) + benchmark (prosek svih fondova).
+  // benchmarkByDate cache pokriva najsiri opseg; lookup po datumu cuva isti
+  // rezultat za sve periode (month/quarter/year su podskupovi 1-godisnjeg range-a).
   const comparisonData = useMemo(() => {
     const base = performance[0]?.fundValue ?? 0;
     if (base <= 0) return [];

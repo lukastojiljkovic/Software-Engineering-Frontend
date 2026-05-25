@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Handshake, Reply, X } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import { useAuth } from '@/context/AuthContext';
@@ -54,7 +54,10 @@ export default function OtcNegotiationsPage() {
     }
   });
 
-  const reloadAccounts = async () => {
+  // FE-OTC-02 fix: useCallback + cancelled flag (pattern iz OtcContractsPage)
+  // — prevenira state update posle unmount-a i daje stabilne reference za
+  // hooks deps liste / external call-eve.
+  const reloadAccounts = useCallback(async () => {
     try {
       const list = isEmployee
         ? asArray<Account>(await accountService.getBankAccounts())
@@ -63,9 +66,9 @@ export default function OtcNegotiationsPage() {
     } catch {
       setAccounts([]);
     }
-  };
+  }, [isEmployee]);
 
-  const reloadOffers = async () => {
+  const reloadOffers = useCallback(async () => {
     setLoading(true);
     try {
       const data = await otcService.listMyActiveOffers();
@@ -76,11 +79,35 @@ export default function OtcNegotiationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    reloadOffers();
-    reloadAccounts();
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await otcService.listMyActiveOffers();
+        if (!cancelled) setOffers(data ?? []);
+      } catch {
+        if (!cancelled) {
+          toast.error('Neuspesno ucitavanje ponuda.');
+          setOffers([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+      try {
+        const list = isEmployee
+          ? asArray<Account>(await accountService.getBankAccounts())
+          : asArray<Account>(await accountService.getMyAccounts());
+        if (!cancelled) setAccounts(list.filter((a) => a.status === 'ACTIVE'));
+      } catch {
+        if (!cancelled) setAccounts([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [isEmployee]);
 
   const activeOffers = useMemo(

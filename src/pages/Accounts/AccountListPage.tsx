@@ -87,11 +87,17 @@ export default function AccountListPage() {
   const handleCreateAccount = async () => {
     setCreatingAcc(true);
     try {
+      // FE-BANK-03 fix: salje pun payload sa ownershipType=LICNI + default
+      // dnevni/mesecni limit-om, paritet sa employee portal CreateAccountPage.
+      // Klijent samostalno moze samo LICNI (TEKUCI/DEVIZNI) — vidi formu Alert.
       await accountService.submitRequest({
         accountType: newAccType,
+        ownershipType: 'LICNI',
         currency: newAccCurrency,
         initialDeposit: parseNumber(newAccDeposit),
         createCard: newAccCard,
+        dailyLimit: 250000,
+        monthlyLimit: 1000000,
       });
       toast.success('Zahtev za otvaranje racuna je uspesno podnet! Ceka odobrenje zaposlenog.');
       setShowNewAccount(false);
@@ -317,7 +323,10 @@ export default function AccountListPage() {
         </div>
       </div>
 
-      {/* New account form */}
+      {/* New account form (FE-BANK-03 fix: limited subset za klijenta — full form
+          sa ownershipType/limits/subtype-ima je dostupna u employee portalu
+          CreateAccountPage; klijent moze samo TEKUCI ili DEVIZNI sa default
+          dnevni/mesecni limit-om). */}
       {showNewAccount && (
         <Card className="rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between">
@@ -325,14 +334,22 @@ export default function AccountListPage() {
             <Button variant="outline" size="sm" onClick={() => setShowNewAccount(false)}>Otkazi</Button>
           </CardHeader>
           <CardContent className="space-y-4">
+            <Alert>
+              <AlertDescription>
+                Klijent moze samostalno otvoriti samo licni tekuci ili devizni racun sa
+                podrazumevanim limitima (dnevni 250.000 RSD, mesecni 1.000.000 RSD).
+                Za poslovne racune ili naprednije opcije (custom limiti, subtype,
+                ovlasceno lice), obratite se zaposlenom u banci.
+              </AlertDescription>
+            </Alert>
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label>Tip racuna</Label>
                 <Select value={newAccType} onValueChange={setNewAccType}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="CHECKING">Tekuci</SelectItem>
-                    <SelectItem value="FOREIGN">Devizni</SelectItem>
+                    <SelectItem value="CHECKING">Tekuci (LICNI)</SelectItem>
+                    <SelectItem value="FOREIGN">Devizni (LICNI)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

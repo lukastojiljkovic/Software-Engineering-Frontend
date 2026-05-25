@@ -7,8 +7,11 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import PageHeader from '@/components/shared/PageHeader';
 import { savingsService } from '@/services/savingsService';
+import { currencyService } from '@/services/currencyService';
+import type { ExchangeRate } from '@/types/celina2';
 import type { SavingsDepositDto, SavingsDepositStatus } from '@/types/savings';
 import { STATUS_LABEL_SR } from '@/types/savings';
+import { asArray } from '@/utils/formatters';
 
 const STATUS_VARIANT: Record<SavingsDepositStatus, 'success' | 'secondary' | 'warning' | 'info'> = {
   ACTIVE: 'success',
@@ -53,6 +56,8 @@ export default function SavingsListPage() {
   const navigate = useNavigate();
   const [deposits, setDeposits] = useState<SavingsDepositDto[]>([]);
   const [loading, setLoading] = useState(true);
+  // FE-FND-05 fix: pun multi-currency FX→RSD conversion (pattern iz HomePage netWorth).
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([]);
 
   useEffect(() => {
     savingsService
@@ -62,22 +67,41 @@ export default function SavingsListPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    // Best-effort fetch — ako padne, FX KPI prikazuje samo RSD doprinos.
+    currencyService
+      .getExchangeRates()
+      .then((rates) => setExchangeRates(asArray<ExchangeRate>(rates)))
+      .catch(() => setExchangeRates([]));
+  }, []);
+
   const active = useMemo(() => deposits.filter(d => d.status === 'ACTIVE'), [deposits]);
 
-  const totalPrincipal = useMemo(
-    () => active.reduce((sum, d) => sum + d.principalAmount, 0),
-    [active]
+  // FE-FND-05 fix: rate mapa kao u HomePage netWorth — middleRate = RSD per 1 unit valute.
+  const ratesMap = useMemo(() => {
+    const map = new Map<string, number>();
+    map.set('RSD', 1);
+    exchangeRates.forEach((r) => {
+      const rsdPerUnit = r.middleRate && r.middleRate > 0 ? (1 / r.middleRate) : 0;
+      if (rsdPerUnit > 0) map.set(r.currency, rsdPerUnit);
+    });
+    return map;
+  }, [exchangeRates]);
+
+  // FE-FND-05 fix: principal i kamata sad konvertuju sve valute u RSD pre sume.
+  // Stari kod je sumirao raw amounts preko valuta — beznacajan rezultat.
+  const totalPrincipalRsd = useMemo(
+    () => active.reduce((sum, d) => sum + d.principalAmount * (ratesMap.get(d.currencyCode) ?? 0), 0),
+    [active, ratesMap]
   );
-  const totalInterest = useMemo(
-    () => deposits.reduce((sum, d) => sum + d.totalInterestPaid, 0),
-    [deposits]
+  const totalInterestRsd = useMemo(
+    () => deposits.reduce((sum, d) => sum + d.totalInterestPaid * (ratesMap.get(d.currencyCode) ?? 0), 0),
+    [deposits, ratesMap]
   );
   const nextMaturityDays = useMemo(() => {
     if (active.length === 0) return null;
     return Math.min(...active.map(d => daysUntil(d.maturityDate)));
   }, [active]);
-
-  const defaultCurrency = deposits[0]?.currencyCode ?? 'RSD';
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
@@ -94,17 +118,19 @@ export default function SavingsListPage() {
         />
       </div>
 
-      {/* KPI strip */}
+      {/* FE-FND-05 fix: KPI strip sad prikazuje sume u RSD (multi-currency FX
+          conversion). Pre fix-a je sumirao raw amounts preko razlicitih valuta
+          — meaningless. Sufiks "RSD" zalepljen na value-ove jasno indikuje. */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <KpiChip
           icon={<Vault className="w-5 h-5" />}
-          label="Ukupno orocno"
-          value={formatAmount(totalPrincipal, defaultCurrency)}
+          label="Ukupno orocno (RSD)"
+          value={formatAmount(totalPrincipalRsd, 'RSD')}
         />
         <KpiChip
           icon={<TrendingUp className="w-5 h-5" />}
-          label="Ukupno kamata"
-          value={formatAmount(totalInterest, defaultCurrency)}
+          label="Ukupno kamata (RSD)"
+          value={formatAmount(totalInterestRsd, 'RSD')}
         />
         <KpiChip
           icon={<Calendar className="w-5 h-5" />}

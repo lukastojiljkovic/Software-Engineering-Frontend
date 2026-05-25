@@ -36,6 +36,17 @@ import {
 // ili nema dovoljno istorije, metrike se prikazuju kao „—".
 // ============================================================
 
+// FE-FND-04 fix: module-level cache za fund statistics. Pre fix-a, efekat sa
+// `[funds]` dep-om je refetch-ovao statistike kad god se funds array preracunao
+// (filter/sort change → fetchFunds → setFunds → ovaj useEffect → N+1).
+// Sad keshira po fundId, fetch se dogadja samo za fondove koji jos nisu u cache-u.
+const STATS_CACHE = new Map<number, FundStatisticsDto>();
+
+/** Exposed za test isolation — tests trebaju clear izmedju `it` blokova. */
+export function __clearFundStatsCache() {
+  STATS_CACHE.clear();
+}
+
 /** Sortabilne metricke kolone -> odgovarajuce polje u FundStatisticsDto. */
 const METRIC_KEY = {
   annualizedReturn: 'annualizedReturnPercent',
@@ -171,22 +182,43 @@ export default function FundsDiscoveryPage() {
 
   useEffect(() => { fetchFunds(); }, [fetchFunds]);
 
-  // FE4 (7.2) — kad se lista fondova promeni, paralelno dohvati metrike za sve.
-  // Promise.allSettled: pad jednog poziva (npr. 404 dok B12 nije gotov) ne ruši ostale.
+  // FE-FND-04 fix: keshirano per fundId u STATS_CACHE — fetch samo za nove
+  // fondove. Pre fix-a: dep `funds` → svaki filter/sort change triggera N+1
+  // ponavljanje GET /funds/{id}/statistics. Sad rezultat se reuse-uje.
   useEffect(() => {
-    // Nema fondova -> nema šta da se dohvata. Stari fundStats je bezopasan
-    // (nema redova da ga koriste), pa ga ne diramo — izbegava setState u efektu.
     if (funds.length === 0) return;
     let cancelled = false;
+
+    // Identifikuj fondove koji nemaju keshirane statistike.
+    const missingIds = funds.map((f) => f.id).filter((id) => !STATS_CACHE.has(id));
+
+    // Inicijalno setuj postojeci cache (sync) tako da UI vec moze da prikaze
+    // metrike za poznate fondove pre nego sto fetch zavrsi.
+    const initialMap: Record<number, FundStatisticsDto> = {};
+    funds.forEach((f) => {
+      const cached = STATS_CACHE.get(f.id);
+      if (cached) initialMap[f.id] = cached;
+    });
+    setFundStats(initialMap);
+
+    if (missingIds.length === 0) {
+      setStatsChecked(true);
+      return;
+    }
+
     void Promise.allSettled(
-      funds.map((f) => fundStatisticsService.getFundStatistics(f.id)),
+      missingIds.map((id) => fundStatisticsService.getFundStatistics(id)),
     ).then((results) => {
       if (cancelled) return;
-      const map: Record<number, FundStatisticsDto> = {};
+      const updated: Record<number, FundStatisticsDto> = { ...initialMap };
       results.forEach((r, i) => {
-        if (r.status === 'fulfilled') map[funds[i].id] = r.value;
+        const fid = missingIds[i];
+        if (r.status === 'fulfilled') {
+          STATS_CACHE.set(fid, r.value);
+          updated[fid] = r.value;
+        }
       });
-      setFundStats(map);
+      setFundStats(updated);
       setStatsChecked(true);
     });
     return () => {

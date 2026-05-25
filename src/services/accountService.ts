@@ -60,7 +60,15 @@ export const accountService = {
     await api.patch(`/accounts/${accountId}/status`, { status });
   },
 
-  submitRequest: async (data: { accountType: string; currency: string; initialDeposit?: number; createCard?: boolean }): Promise<unknown> => {
+  submitRequest: async (data: {
+    accountType: string;
+    ownershipType?: string;
+    currency: string;
+    initialDeposit?: number;
+    createCard?: boolean;
+    dailyLimit?: number;
+    monthlyLimit?: number;
+  }): Promise<unknown> => {
     const response = await api.post('/accounts/requests', data);
     return response.data;
   },

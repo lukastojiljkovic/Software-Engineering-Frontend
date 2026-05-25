@@ -263,10 +263,12 @@ describe('EmployeeEditPage', () => {
     });
   });
 
-  it('calls deactivate when status is switched to inactive', async () => {
+  it('sends combined PUT with isActive=false instead of separate deactivate call (FE-AUTH-06)', async () => {
+    // FE-AUTH-06: deaktivacija + ostale promene moraju ici u JEDAN PUT zahtev,
+    // ne 2 sekvencijalna poziva. Stari pristup (deactivate then update) je
+    // mogao da ostavi DB u nekonzistentnom stanju ako drugi poziv padne.
     mockGetById.mockResolvedValueOnce({ ...mockEmployee, isActive: true });
-    mockDeactivate.mockResolvedValueOnce(undefined);
-    mockUpdate.mockResolvedValueOnce(mockEmployee);
+    mockUpdate.mockResolvedValueOnce({ ...mockEmployee, isActive: false });
     const user = userEvent.setup();
     renderWithProviders(<EmployeeEditPage />);
 
@@ -289,11 +291,14 @@ describe('EmployeeEditPage', () => {
     await user.click(screen.getByRole('button', { name: /sacuvaj izmene/i }));
 
     await waitFor(() => {
-      // If the switch was toggled, deactivate should be called
-      if (mockDeactivate.mock.calls.length > 0) {
-        expect(mockDeactivate).toHaveBeenCalledWith(5);
-      }
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+      expect(mockUpdate).toHaveBeenCalledWith(
+        5,
+        expect.objectContaining({ isActive: false }),
+      );
     });
+    // FE-AUTH-06: deactivate endpoint vise NIJE pozvan separatno.
+    expect(mockDeactivate).not.toHaveBeenCalled();
   });
 
   it('shows loading state during save', async () => {

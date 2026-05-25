@@ -30,6 +30,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import * as Dialog from '@radix-ui/react-dialog';
 import { asArray, formatAmount, formatDate } from '@/utils/formatters';
 import { sortByAmountDesc } from '@/utils/comparators';
 import { percentOf } from '@/utils/numberUtils';
@@ -49,6 +50,17 @@ export default function LoanListPage() {
   const [installments, setInstallments] = useState<Installment[]>([]);
   const [loadingInstallments, setLoadingInstallments] = useState(false);
   const [processingEarlyRepayment, setProcessingEarlyRepayment] = useState(false);
+  const [confirmEarlyRepaymentLoanId, setConfirmEarlyRepaymentLoanId] = useState<number | null>(null);
+
+  const earlyRepaymentBreakdown = useMemo(() => {
+    if (!selectedLoan) return null;
+    const unpaidInterest = asArray<Installment>(installments)
+      .filter(i => !i.paid)
+      .reduce((sum, i) => sum + (i.interestAmount ?? 0), 0);
+    const principal = selectedLoan.remainingDebt ?? 0;
+    const totalPayoff = principal + unpaidInterest;
+    return { principal, unpaidInterest, totalPayoff };
+  }, [selectedLoan, installments]);
 
   useEffect(() => {
     const load = async () => {
@@ -417,34 +429,8 @@ export default function LoanListPage() {
                   size="sm"
                   disabled={processingEarlyRepayment}
                   className="hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all duration-200"
-                  onClick={async () => {
-                    const unpaidInterest = asArray<Installment>(installments)
-                      .filter(i => !i.paid)
-                      .reduce((sum, i) => sum + (i.interestAmount ?? 0), 0);
-                    const totalPayoff = (selectedLoan.remainingDebt ?? 0) + unpaidInterest;
-
-                    const confirmed = window.confirm(
-                      `Prevremena otplata kredita\n\n` +
-                      `Preostala glavnica: ${formatAmount(selectedLoan.remainingDebt)} ${selectedLoan.currency}\n` +
-                      `Preostala kamata: ${formatAmount(unpaidInterest)} ${selectedLoan.currency}\n` +
-                      `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-                      `UKUPNO za otplatu: ${formatAmount(totalPayoff)} ${selectedLoan.currency}\n\n` +
-                      `Da li želite da nastavite?`
-                    );
-                    if (!confirmed) return;
-                    setProcessingEarlyRepayment(true);
-                    try {
-                      await creditService.earlyRepayment(selectedLoan.id);
-                      toast.success('Zahtev za prevremenu otplatu je uspešno podnet.');
-                      const data = await creditService.getMyLoans();
-                      setLoans(asArray<Loan>(data).sort(sortByAmountDesc));
-                      setSelectedLoan(null);
-                    } catch {
-                      toast.error('Prevremena otplata nije uspela.');
-                    } finally {
-                      setProcessingEarlyRepayment(false);
-                    }
-                  }}
+                  data-testid="loan-early-repay-trigger"
+                  onClick={() => setConfirmEarlyRepaymentLoanId(selectedLoan.id)}
                 >
                   {processingEarlyRepayment ? 'Obrada...' : 'Prevremena otplata'}
                 </Button>
@@ -454,6 +440,88 @@ export default function LoanListPage() {
         </Card>
       )}
       </>}
+
+      {/* FE-BANK-02 fix: Radix Dialog za prevremenu otplatu (zamenjuje window.confirm). */}
+      <Dialog.Root
+        open={confirmEarlyRepaymentLoanId !== null}
+        onOpenChange={(open) => !open && setConfirmEarlyRepaymentLoanId(null)}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border bg-background shadow-2xl"
+            data-testid="loan-early-repay-confirm-dialog"
+          >
+            {/* Emerald gradient header (pattern iz CardListPage block flow) */}
+            <div className="bg-gradient-to-r from-emerald-500 to-green-600 px-6 py-4">
+              <Dialog.Title className="text-lg font-semibold text-white">
+                Prevremena otplata kredita
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 text-sm text-emerald-50">
+                Pregledajte raspodelu pre potvrde. Akcija se ne moze opozvati.
+              </Dialog.Description>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              {selectedLoan && earlyRepaymentBreakdown && (
+                <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Preostala glavnica</span>
+                    <span className="font-mono tabular-nums font-medium">
+                      {formatAmount(earlyRepaymentBreakdown.principal)} {selectedLoan.currency}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Preostala kamata</span>
+                    <span className="font-mono tabular-nums font-medium">
+                      {formatAmount(earlyRepaymentBreakdown.unpaidInterest)} {selectedLoan.currency}
+                    </span>
+                  </div>
+                  <div className="border-t pt-2 flex items-center justify-between">
+                    <span className="text-sm font-semibold">Ukupno za otplatu</span>
+                    <span className="font-mono tabular-nums text-base font-bold text-emerald-700 dark:text-emerald-400">
+                      {formatAmount(earlyRepaymentBreakdown.totalPayoff)} {selectedLoan.currency}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  onClick={() => setConfirmEarlyRepaymentLoanId(null)}
+                  disabled={processingEarlyRepayment}
+                >
+                  Otkazi
+                </Button>
+                <Button
+                  variant="destructive"
+                  data-testid="loan-early-repay-confirm-button"
+                  disabled={processingEarlyRepayment}
+                  onClick={async () => {
+                    if (!selectedLoan || confirmEarlyRepaymentLoanId === null) return;
+                    setProcessingEarlyRepayment(true);
+                    try {
+                      await creditService.earlyRepayment(selectedLoan.id);
+                      toast.success('Zahtev za prevremenu otplatu je uspesno podnet.');
+                      const data = await creditService.getMyLoans();
+                      setLoans(asArray<Loan>(data).sort(sortByAmountDesc));
+                      setSelectedLoan(null);
+                      setConfirmEarlyRepaymentLoanId(null);
+                    } catch {
+                      toast.error('Prevremena otplata nije uspela.');
+                    } finally {
+                      setProcessingEarlyRepayment(false);
+                    }
+                  }}
+                >
+                  {processingEarlyRepayment ? 'Obrada...' : 'Potvrdi otplatu'}
+                </Button>
+              </div>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }

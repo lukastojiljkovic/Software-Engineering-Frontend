@@ -60,6 +60,29 @@ function getInitialUser(): AuthUser | null {
 // `permissions.push(...)` + reassign preko `await` boundary brisala je
 // prethodne push-eve (race), pa je sad razdvojeno: prvo izracunaj sve
 // async izvore, pa kompozuj kao immutable lista.
+// FE-AUTH-07: lista validnih Permission enum vrednosti, prekoputa u Set
+// za O(1) lookup. Koristi se kao runtime filter — BE moze (teoretski)
+// vratiti nepoznat string u `permissions` listi (npr. dodat permission na
+// BE pre FE deploy-a, schema drift, manuelna DB modifikacija). Bez
+// validacije, `as Permission[]` cast je laz prema TypeScript-u i moze
+// proci kroz codebase do mesta gde se ocekuje strogi enum.
+const VALID_PERMISSIONS = new Set<string>(Object.values(Permission));
+
+function filterValidPermissions(rawPermissions: unknown): Permission[] {
+  if (!Array.isArray(rawPermissions)) return [];
+  const filtered: Permission[] = [];
+  for (const p of rawPermissions) {
+    if (typeof p === 'string' && VALID_PERMISSIONS.has(p)) {
+      filtered.push(p as Permission);
+    } else if (typeof p === 'string') {
+      // Log za debug — neocekivan permission string sa BE-a.
+      // eslint-disable-next-line no-console
+      console.warn('[AuthContext] BE vratio nepoznat permission, ignorisan:', p);
+    }
+  }
+  return filtered;
+}
+
 async function fetchEmployeePermissions(email: string): Promise<{
   permissions: Permission[];
   userId: number;
@@ -72,7 +95,8 @@ async function fetchEmployeePermissions(email: string): Promise<{
     if (employees.length > 0) {
       const emp = employees[0];
       return {
-        permissions: (emp.permissions ?? []) as Permission[],
+        // FE-AUTH-07: filter umesto unsafe `as Permission[]` cast-a.
+        permissions: filterValidPermissions(emp.permissions),
         userId: emp.id,
         firstName: emp.firstName,
         lastName: emp.lastName,

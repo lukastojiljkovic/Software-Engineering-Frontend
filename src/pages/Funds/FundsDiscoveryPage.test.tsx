@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import FundsDiscoveryPage from './FundsDiscoveryPage';
+import FundsDiscoveryPage, { __clearFundStatsCache } from './FundsDiscoveryPage';
 import { renderWithProviders } from '@/test/test-utils';
 
 const mockNavigate = vi.fn();
@@ -81,6 +81,8 @@ const STATS = {
 describe('FundsDiscoveryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // FE-FND-04: ocisti module-level cache izmedju testova radi izolacije.
+    __clearFundStatsCache();
     mockUseAuth.mockReturnValue({ isSupervisor: false });
     mockListFunds.mockResolvedValue(FUNDS);
     mockGetFundStatistics.mockResolvedValue(STATS);

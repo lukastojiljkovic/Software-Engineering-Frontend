@@ -109,18 +109,18 @@ describe('MyOrdersPage', () => {
     expect(screen.getByText(/MSFT/)).toBeInTheDocument();
   });
 
-  it('renders status filter buttons', async () => {
+  it('renders advanced BE filters (status, date, listing type)', async () => {
+    // FE-TRD-01: chip filter uklonjen; samo BE dropdown filter ostaje.
     renderWithProviders(<MyOrdersPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Svi/)).toBeInTheDocument();
+      expect(screen.getByTestId('orders-status-filter')).toBeInTheDocument();
     });
 
-    // "Na cekanju" appears in both filter button and status badge; use getAllByText
-    expect(screen.getAllByText(/Na cekanju/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Odobreni/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Zavrseni/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Odbijeni/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId('orders-date-from-filter')).toBeInTheDocument();
+    expect(screen.getByTestId('orders-date-to-filter')).toBeInTheDocument();
+    expect(screen.getByTestId('orders-listing-type-filter')).toBeInTheDocument();
+    expect(screen.getByTestId('orders-reset-filters')).toBeInTheDocument();
   });
 
   it('renders Cancel button for PENDING orders', async () => {

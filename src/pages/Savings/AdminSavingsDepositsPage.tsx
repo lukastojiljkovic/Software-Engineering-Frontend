@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Vault } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import { Card } from '@/components/ui/card';
@@ -45,7 +45,11 @@ export default function AdminSavingsDepositsPage() {
   const [filterClientId, setFilterClientId] = useState<string>('');
   const [pageNum, setPageNum] = useState(0);
 
-  const load = async () => {
+  // FE-FND-02 fix: load wrapuje useCallback sa svim filter dep-ima i useEffect
+  // okida na change svih relevantnih state vrednosti (filterStatus + filterClientId +
+  // pageNum). Pre fix-a, filteri su menjali state ali useEffect je gledao samo
+  // pageNum → stale closure (refetch trigger se nije aktivirao).
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const result = await savingsService.adminListAll({
@@ -61,9 +65,9 @@ export default function AdminSavingsDepositsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterStatus, filterClientId, pageNum]);
 
-  useEffect(() => { load(); }, [pageNum]);
+  useEffect(() => { void load(); }, [load]);
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">

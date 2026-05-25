@@ -88,19 +88,31 @@ const ERROR_CODE_MESSAGES: Record<string, string> = {
   INTERNAL_ERROR: 'Greska na strani banke primaoca.',
 };
 
-export function pickFailureReason(
-  raw: { failureReason?: string; rejectionReason?: string; errorMessage?: string; errorCode?: string } | null | undefined,
-  fallback: string,
-): string {
-  if (!raw) return fallback;
+/**
+ * Shape s kojom radi `pickFailureReason`. Eksport-ovano za consumer-e koji
+ * persistuju ili logaju isti objekat na drugom mestu.
+ */
+export type FailureLike = {
+  failureReason?: string;
+  rejectionReason?: string;
+  errorMessage?: string;
+  errorCode?: string;
+};
+
+// FE-OTC-07 fix: pickFailureReason sad prihvata `unknown` i unutar tela
+// radi safe-cast. Time se uklanja repetitivni `as FailureLike` inline cast
+// koji se pojavljivao 4× u OtcInterBankContractsTab.
+export function pickFailureReason(raw: unknown, fallback: string): string {
+  if (!raw || typeof raw !== 'object') return fallback;
+  const f = raw as FailureLike;
   // 1. Konkretna BE poruka (najprioritetnija — BE zna detalje)
-  const direct = raw.failureReason ?? raw.rejectionReason ?? raw.errorMessage;
+  const direct = f.failureReason ?? f.rejectionReason ?? f.errorMessage;
   if (direct && direct.trim().length > 0) {
     return direct;
   }
   // 2. Mapiran error code
-  if (raw.errorCode && ERROR_CODE_MESSAGES[raw.errorCode]) {
-    return ERROR_CODE_MESSAGES[raw.errorCode];
+  if (f.errorCode && ERROR_CODE_MESSAGES[f.errorCode]) {
+    return ERROR_CODE_MESSAGES[f.errorCode];
   }
   // 3. Fallback
   return fallback;
