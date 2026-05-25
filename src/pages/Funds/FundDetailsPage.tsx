@@ -34,6 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import FundInvestDialog from './FundInvestDialog';
 import FundWithdrawDialog from './FundWithdrawDialog';
 import {
@@ -140,6 +141,8 @@ export default function FundDetailsPage() {
   const [withdrawMode, setWithdrawMode] = useState<null | 'self' | 'bank'>(null);
   const [fundDividends, setFundDividends] = useState<FundDividendHistoryDto[]>([]);
   const [fundDividendsStatus, setFundDividendsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  // TODO_final C4 #14 / Sc 70 — politika obrade dividendi (toggle za admin/manager).
+  const [updatingDividendPolicy, setUpdatingDividendPolicy] = useState(false);
 
   // Refresh fund detalji (KPI kartice: vrednost, likvidnost, profit) — zove se posle
   // svake invest/withdraw uplate jer reloadPositions samo refresh-uje pozicije klijenta.
@@ -194,6 +197,33 @@ export default function FundDetailsPage() {
       toast.error(getErrorMessage(err, 'Greska pri ucitavanju supervizora'));
     } finally {
       setSupervisorsLoading(false);
+    }
+  };
+
+  // TODO_final C4 #14 / Sc 70 — toggle politike dividendi (admin ili manager).
+  const handleDividendPolicyToggle = async (reinvest: boolean) => {
+    if (!fund) return;
+    setUpdatingDividendPolicy(true);
+    try {
+      const updated = await investmentFundService.updateDividendPolicy(fund.id, reinvest);
+      setFund(updated);
+      toast.success(
+        reinvest
+          ? 'Dividende ce se reinvestirati u fond (auto-BUY ordere).'
+          : 'Dividende ce se distribuirati klijentima.',
+      );
+    } catch (err) {
+      const httpErr = err as { response?: { status?: number; data?: { message?: string } } };
+      const status = httpErr?.response?.status;
+      if (status === 403) {
+        toast.error('Nemate dozvolu za promenu politike dividendi.');
+      } else if (status === 404) {
+        toast.error('Fond nije pronadjen.');
+      } else {
+        toast.error(getErrorMessage(err, 'Promena politike dividendi nije uspela.'));
+      }
+    } finally {
+      setUpdatingDividendPolicy(false);
     }
   };
 
@@ -767,12 +797,37 @@ export default function FundDetailsPage() {
               Raspodela dividendi fonda
             </CardTitle>
             {/*
-              Reinvest mod je BE-side feature; FE prikazuje read-only Badge
-              dok BE ne izlozi `PATCH /funds/{id}/dividend-policy`.
+              TODO_final C4 #14 / Sc 70: dinamic badge + toggle za admin/manager.
+              - Klijent / agent / drugi supervizor vide samo read-only Badge.
+              - Admin (bilo koji) i supervisor-manager mogu prebaciti politiku.
             */}
-            <Badge variant="secondary" data-testid="fund-dividend-reinvest-badge">
-              Reinvest: NE
-            </Badge>
+            {isAdmin || isOwner ? (
+              <div className="flex items-center gap-3" data-testid="fund-dividend-policy-toggle">
+                <Label htmlFor="dividend-policy-switch" className="text-sm">
+                  Reinvest dividende
+                </Label>
+                <Switch
+                  id="dividend-policy-switch"
+                  data-testid="fund-dividend-policy-switch"
+                  checked={Boolean(fund?.reinvestDividends)}
+                  disabled={updatingDividendPolicy || !fund}
+                  onCheckedChange={(checked) => { void handleDividendPolicyToggle(Boolean(checked)); }}
+                />
+                <Badge
+                  variant={fund?.reinvestDividends ? 'default' : 'secondary'}
+                  data-testid="fund-dividend-reinvest-badge"
+                >
+                  Reinvest: {fund?.reinvestDividends ? 'DA' : 'NE'}
+                </Badge>
+              </div>
+            ) : (
+              <Badge
+                variant={fund?.reinvestDividends ? 'default' : 'secondary'}
+                data-testid="fund-dividend-reinvest-badge"
+              >
+                Reinvest: {fund?.reinvestDividends ? 'DA' : 'NE'}
+              </Badge>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0">

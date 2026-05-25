@@ -17,6 +17,8 @@ export interface InvestmentFundSummary {
   profit: number;
   managerName: string;
   inceptionDate: string; // ISO date
+  /** TODO_final C4 #14 / Sc 70: politika obrade dividendi (false=distribute, true=reinvest). */
+  reinvestDividends?: boolean;
 }
 
 export interface InvestmentFundDetail {
@@ -34,6 +36,8 @@ export interface InvestmentFundDetail {
   holdings: FundHolding[];
   performance: FundPerformancePoint[];
   inceptionDate: string;
+  /** TODO_final C4 #14 / Sc 70: politika obrade dividendi (false=distribute, true=reinvest). */
+  reinvestDividends?: boolean;
 }
 
 export interface FundHolding {

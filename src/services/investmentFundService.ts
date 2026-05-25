@@ -90,6 +90,19 @@ const investmentFundService = {
   },
 
   /**
+   * PATCH /funds/{id}/dividend-policy — TODO_final C4 #14 / Sc 70.
+   * Admin ili supervizor (fund manager) prebacuje fond izmedju
+   * "distribuiraj klijentima" (false, default) i "reinvestiraj kroz auto-BUY"
+   * (true). BE vraca azurirani fund detail sa novim {@code reinvestDividends}.
+   */
+  async updateDividendPolicy(fundId: number, reinvest: boolean): Promise<InvestmentFundDetail> {
+    const { data } = await api.patch<InvestmentFundDetail>(`/funds/${fundId}/dividend-policy`, {
+      reinvest,
+    });
+    return data;
+  },
+
+  /**
    * Vraca fondove kojima upravlja zadat zaposleni. BE jos uvek nema namenski
    * endpoint, pa filtriramo lokalno preko `list()`. Spec Celina 4 (Nova)
    * §3797-3879: kad admin ukloni isSupervisor permisiju supervizoru koji
