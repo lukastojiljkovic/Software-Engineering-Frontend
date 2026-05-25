@@ -63,7 +63,7 @@ describe('passwordSchema', () => {
   });
 });
 
-describe('phoneSchema (strict E.164 — TODO_final C1 #1)', () => {
+describe('phoneSchema (strict E.164)', () => {
   it('accepts a valid strict E.164 phone', () => {
     expect(phoneSchema.safeParse('+381601234567').success).toBe(true);
   });
@@ -101,7 +101,7 @@ describe('phoneSchema (strict E.164 — TODO_final C1 #1)', () => {
   });
 });
 
-describe('dateOfBirthSchema (TODO_final C1 #1)', () => {
+describe('dateOfBirthSchema', () => {
   it('accepts a past date', () => {
     expect(dateOfBirthSchema.safeParse('1990-03-15').success).toBe(true);
   });

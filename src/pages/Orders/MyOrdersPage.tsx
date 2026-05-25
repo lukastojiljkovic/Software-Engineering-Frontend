@@ -146,9 +146,7 @@ export default function MyOrdersPage() {
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
   const [cancelingOrderId, setCancelingOrderId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
-  // TODO_final C3 #7 — dodatni BE-strana filteri (status/dateFrom/dateTo/listingType).
-  // Status posebno cuvamo: statusFilter ovde je FE-strana chip; dodatni
-  // statusBeFilter se salje BE-u za detaljnu istoriju ordera.
+  // statusFilter je FE-strana chip; statusBeFilter se salje BE-u (status/dateFrom/dateTo/listingType).
   const [statusBeFilter, setStatusBeFilter] = useState('');
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
@@ -399,7 +397,7 @@ export default function MyOrdersPage() {
           </CardContent>
         </Card>
 
-        {/* TODO_final C3 #7 — filteri istorije ordera (status, datum, tip hartije). */}
+        {/* Detaljni filteri istorije ordera (status, datum, tip hartije) */}
         <Card data-testid="orders-advanced-filters-card">
           <CardHeader>
             <div className="flex items-center justify-between gap-2">

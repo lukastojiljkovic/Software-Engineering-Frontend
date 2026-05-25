@@ -262,7 +262,7 @@ describe('MyOrdersPage', () => {
     expect(screen.getByText('Zavrsen')).toBeInTheDocument();
   });
 
-  // TODO_final C3 #7 — detaljni filteri (status, datum od/do, tip hartije) + Reset.
+  // Detaljni filteri: status, datum od/do, tip hartije + Reset.
 
   it('renders advanced filter controls', async () => {
     renderWithProviders(<MyOrdersPage />);

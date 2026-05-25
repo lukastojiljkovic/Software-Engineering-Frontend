@@ -138,7 +138,6 @@ export default function FundDetailsPage() {
   const [bankPosition, setBankPosition] = useState<ClientFundPosition | null>(null);
   const [investMode, setInvestMode] = useState<null | 'self' | 'bank'>(null);
   const [withdrawMode, setWithdrawMode] = useState<null | 'self' | 'bank'>(null);
-  // TODO_final C4 #14 — Fund-level dividends (Jovan Krunic / FE4).
   const [fundDividends, setFundDividends] = useState<FundDividendHistoryDto[]>([]);
   const [fundDividendsStatus, setFundDividendsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
@@ -275,8 +274,7 @@ export default function FundDetailsPage() {
     return () => { cancelled = true; };
   }, [id]);
 
-  // TODO_final C4 #14 — Fund-level dividends (Jovan Krunic / FE4).
-  // Zaseban poziv (404 ne ruzi stranicu, fundDividendService vraca prazan niz).
+  // Fund-level dividends — zaseban poziv (greska ne ruzi stranicu, prikazuje error alert).
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
@@ -760,7 +758,7 @@ export default function FundDetailsPage() {
         </CardContent>
       </Card>
 
-      {/* TODO_final C4 #14 — Raspodela dividendi fonda (Jovan Krunic / FE4). */}
+      {/* Raspodela dividendi fonda */}
       <Card data-testid="fund-dividends-card">
         <CardHeader>
           <div className="flex items-center justify-between">

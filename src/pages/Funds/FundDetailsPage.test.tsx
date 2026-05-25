@@ -240,7 +240,7 @@ describe('FundDetailsPage', () => {
     );
   });
 
-  // --- TODO_final C4 #14 — Fund-level dividend history ---
+  // --- Fund-level dividend history ---
 
   it('renderuje karticu Raspodela dividendi fonda', async () => {
     renderWithProviders(<FundDetailsPage />);

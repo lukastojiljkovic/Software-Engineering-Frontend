@@ -82,7 +82,7 @@ import SavingsDetailsPage from './pages/Savings/SavingsDetailsPage';
 import AdminSavingsDepositsPage from './pages/Savings/AdminSavingsDepositsPage';
 import AdminSavingsRatesPage from './pages/Savings/AdminSavingsRatesPage';
 
-// TODO_final - Razvojni ciklus 2026-05-25
+// Razvojni ciklus 25.05.2026 — trgovinski feature-i + audit log
 import PriceAlertsPage from './pages/PriceAlerts/PriceAlertsPage';
 import WatchlistPage from './pages/Watchlist/WatchlistPage';
 import RecurringOrdersPage from './pages/RecurringOrders/RecurringOrdersPage';
@@ -190,14 +190,14 @@ export default function App() {
             <Route path="/otc/negotiation-history" element={<OtcNegotiationHistoryPage />} />
           </Route>
 
-          {/* TODO_final 2026-05-25 — trgovinske TODO_final rute (klijenti + supervizori + admin) */}
+          {/* Trgovinske rute — klijenti + supervizori + admin (agenti iskljuceni) */}
           <Route element={<ProtectedRoute noAgentOnly />}>
             <Route path="/price-alerts" element={<PriceAlertsPage />} />
             <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/recurring-orders" element={<RecurringOrdersPage />} />
           </Route>
 
-          {/* TODO_final 2026-05-25 — Audit log (samo admin + supervizor) */}
+          {/* Audit log — samo admin + supervizor */}
           <Route element={<ProtectedRoute supervisorOnly />}>
             <Route path="/audit-log" element={<AuditLogPage />} />
           </Route>

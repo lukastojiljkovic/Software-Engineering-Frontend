@@ -108,7 +108,7 @@ describe('ResetPasswordPage', () => {
     });
   });
 
-  it('shows "Nalog je otkljucan" success alert after reset (TODO_final C1 #2)', async () => {
+  it('shows "Nalog je otkljucan" success alert after reset', async () => {
     mockSearchParams = new URLSearchParams('token=valid-token-123');
     mockResetPassword.mockResolvedValueOnce(undefined);
     const user = userEvent.setup();

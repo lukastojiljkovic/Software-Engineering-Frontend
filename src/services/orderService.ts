@@ -28,7 +28,7 @@ const orderService = {
 
   /**
    * GET /orders/my?page=0&size=20&status=...&dateFrom=...&dateTo=...&listingType=...
-   * Korisnik: moji orderi sa opcionim filterima (TODO_final C3 #7).
+   * Korisnik: moji orderi sa opcionim filterima.
    * BE OrderController.getMyOrders prihvata sve filter query parametre.
    */
   getMy: async (

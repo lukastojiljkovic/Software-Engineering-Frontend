@@ -2,7 +2,7 @@
 // FE3 — Audit log portal (Developer: Elena Kalajdzic / Jovan)
 //
 // Supervizor + Admin pregled revizionog dnevnika sa filterima.
-// Spec: Zadaci_Frontend.pdf, FE3 / TODO_final C3 #9.
+// Spec: Zadaci_Frontend.pdf, FE3.
 // Ruta: '/audit-log' (App.tsx, ProtectedRoute supervisorOnly).
 // ============================================================
 

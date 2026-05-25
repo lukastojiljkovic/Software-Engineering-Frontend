@@ -106,10 +106,9 @@ export default function ClientSidebar() {
   const clientCanTrade = role === 'CLIENT' && perms.includes('TRADE_STOCKS');
   const canAccessOtc = !isAgent && (isSupervisor || isAdmin || clientCanTrade);
 
-  // TODO_final 2026-05-25: trgovinski feature-i (Watchlist, Cenovni alarmi,
-  // Trajni nalozi/DCA) dostupni su svim koji mogu da trguju — klijenti
-  // (sa TRADE_STOCKS), supervizori i admin. Agenti su iskljuceni po istom
-  // pravilu kao OTC. Reusable: isti `canAccessOtc` semantika vazi.
+  // Trgovinski feature-i (Watchlist, Cenovni alarmi, Trajni nalozi/DCA)
+  // dostupni su svim koji mogu da trguju — klijenti (sa TRADE_STOCKS),
+  // supervizori i admin. Agenti su iskljuceni po istom pravilu kao OTC.
   const canAccessTradingFeatures = !isAgent && (isSupervisor || isAdmin || clientCanTrade);
 
   const tradingLinks: SidebarItem[] = useMemo(

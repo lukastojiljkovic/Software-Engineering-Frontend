@@ -24,8 +24,8 @@ export const passwordSchema = z
     message: 'Lozinka mora sadržati najmanje 1 malo slovo',
   });
 
-// TODO_final C1 #1 — strict E.164 telefon: samo cifre uz opcioni '+' na pocetku,
-// duzine 6-15 karaktera (E.164 max je 15 cifara). Razmaci/crtice vise nisu dozvoljeni.
+// Strict E.164 telefon: samo cifre uz opcioni '+' na pocetku, duzine 6-15
+// karaktera (E.164 max je 15 cifara). Razmaci/crtice nisu dozvoljeni.
 export const phoneSchema = z
   .string()
   .min(1, 'Broj telefona je obavezan')
@@ -34,8 +34,8 @@ export const phoneSchema = z
     'Telefon moze sadrzati samo cifre i opcioni + na pocetku, 6-15 karaktera',
   );
 
-// TODO_final C1 #1 — dateOfBirth ne sme biti u buducnosti.
-// Spec Celina 1: datum rodjenja je istorijski podatak.
+// dateOfBirth ne sme biti u buducnosti — spec Celina 1: datum rodjenja je
+// istorijski podatak.
 export const dateOfBirthSchema = z
   .string()
   .min(1, 'Datum rodjenja je obavezan')

@@ -2,7 +2,7 @@
 // FE3 — Audit log tipovi (Developer: Elena Kalajdzic / Jovan)
 //
 // Tipovi za audit-log portal — sve sto koriste AuditLogPage i auditService.
-// Spec: Zadaci_Frontend.pdf, FE3 / TODO_final C3 #9.
+// Spec: Zadaci_Frontend.pdf, FE3.
 // Konvencija: pratiti `savings` feature celinu kao sablon.
 // ============================================================
 

@@ -106,9 +106,9 @@ export default function ResetPasswordPage() {
           </CardHeader>
           <CardContent>
             {success ? (
-              // TODO_final C1 #2 — spec Celina 1: resetovanje lozinke automatski
-              // otklucava prethodno zakljucan nalog (AccountLockoutService). UI
-              // mora to jasno da signalizira korisniku.
+              // spec Celina 1: resetovanje lozinke automatski otklucava prethodno
+              // zakljucan nalog (AccountLockoutService). UI mora to jasno
+              // da signalizira korisniku.
               <Alert
                 variant="success"
                 className="border-emerald-500/30 bg-emerald-500/5"

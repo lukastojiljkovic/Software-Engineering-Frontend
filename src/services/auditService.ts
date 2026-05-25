@@ -4,7 +4,7 @@
 // HTTP klijent za audit-log portal, oslanja se na `api` axios instancu.
 // Dostupno samo ADMIN + SUPERVISOR rolama (BE vraca 403 inace).
 //
-// Spec: Zadaci_Frontend.pdf, FE3 / TODO_final C3 #9.
+// Spec: Zadaci_Frontend.pdf, FE3.
 // ============================================================
 
 import api from './api';
