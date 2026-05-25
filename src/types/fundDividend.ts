@@ -1,18 +1,6 @@
-// ============================================================
-// TODO_final C4 #14 — Fund-level dividend history (Developer: Jovan Krunic)
-//
-// Tipovi opisuju istoriju dividendi koje fond prima na svoje pozicije,
-// sa naznakom da li su reinvestirane ili distribuirane klijentima
-// (proporcionalno udelu). Mapira se na BE B11 FundDividendService.
-//
-// BE napomena: u trenutku pisanja gap-a, BE NEMA javni endpoint koji
-// vraca istoriju dividendi fonda — `fundDividendService` ima fallback
-// na prazan niz uz `console.warn`. Kad se endpoint pojavi (npr.
-// `GET /funds/{fundId}/dividends`), brisem fallback i koristim direktan poziv.
-// ============================================================
-
 /**
- * Jedna primljena dividenda na nivou fonda — agregat po listingu i datumu.
+ * Jedna primljena dividenda na nivou fonda — mapira `FundDividendHistoryDto`
+ * iz BE `trading-service/investmentfund` modula. Vraca `GET /funds/{id}/dividends`.
  *
  * Razlika u odnosu na `DividendPayoutDto` (per-position klijent):
  *  - `fundId` polje (vlasnik dividende je fond, ne klijent),
@@ -20,17 +8,26 @@
  *  - `distributedToClients` (proporcionalna distribucija klijentima po udelu).
  */
 export interface FundDividendHistoryDto {
+  id: number;
   fundId: number;
   listingId: number;
   listingTicker: string;
   /** ISO datum isplate (YYYY-MM-DD). */
   paymentDate: string;
+  /** ISO timestamp kreiranja zapisa u DB. */
+  createdAt?: string;
+  /** ISO timestamp zavrsetka obrade (reinvest + distribucija). */
+  completedAt?: string;
   /** Bruto iznos primljen na fond. */
   grossAmount: number;
   /** Iznos koji je reinvestiran (kupljene dodatne akcije iste hartije). */
   reinvestedAmount?: number;
   /** Iznos proporcionalno raspoređen klijentima po udelu u fondu. */
   distributedToClients?: number;
+  /** Status obrade na BE-u (DIVIDEND_INFLOW / DIVIDEND_REINVESTED / DIVIDEND_DISTRIBUTED). */
+  status?: string;
   /** Valuta isplate. */
   currency: string;
+  /** Opciona belesa BE-a (npr. transaction marker). */
+  note?: string;
 }
