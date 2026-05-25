@@ -2,18 +2,44 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as Dialog from '@radix-ui/react-dialog';
-import { Loader2, Mail, ShieldCheck, X } from 'lucide-react';
+import { Clock, Loader2, Mail, ShieldCheck, X } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import { transactionService } from '@/services/transactionService';
 import { verificationSchema, type VerificationFormData } from '@/utils/validationSchemas.celina2';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 
 interface VerificationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onVerified: (otpCode: string) => Promise<void>;
+}
+
+/**
+ * TOTP window helpers — RFC 6238 sa 30-second time step.
+ * BE (TotpService) verifikuje kod protiv trenutnog 30s prozora.
+ * Ove pure funkcije omogucavaju FE da pokaze koliko sekundi ostaje u prozoru
+ * pre nego se kod automatski promeni u authenticator app-u.
+ */
+const TOTP_PERIOD_SECONDS = 30;
+
+export function getTotpSecondsLeft(now: number = Date.now()): number {
+  const epochSeconds = Math.floor(now / 1000);
+  const elapsed = epochSeconds % TOTP_PERIOD_SECONDS;
+  return TOTP_PERIOD_SECONDS - elapsed;
+}
+
+export function getTotpProgressPercent(secondsLeft: number): number {
+  // 30s -> 100%, 1s -> ~3.33%; ide nadole kako vreme tece
+  return (secondsLeft * 100) / TOTP_PERIOD_SECONDS;
+}
+
+export function getTotpIndicatorColorClass(secondsLeft: number): string {
+  if (secondsLeft <= 3) return 'bg-red-500';
+  if (secondsLeft <= 10) return 'bg-amber-500';
+  return 'bg-emerald-500';
 }
 
 /**
@@ -33,8 +59,11 @@ export default function VerificationModal({ isOpen, onClose, onVerified }: Verif
   const [attemptsLeft, setAttemptsLeft] = useState(3);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
+  const [, setOtpSent] = useState(false);
   const [devOtp, setDevOtp] = useState<string | null>(null);
+  // TOTP 30-second window state — RFC 6238. Ticks svake sekunde da
+  // odrazi koliko sekundi ostaje u trenutnom prozoru u authenticator app-u.
+  const [totpSecondsLeft, setTotpSecondsLeft] = useState<number>(() => getTotpSecondsLeft());
 
   const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<VerificationFormData>({
     resolver: zodResolver(verificationSchema),
@@ -77,6 +106,23 @@ export default function VerificationModal({ isOpen, onClose, onVerified }: Verif
     const id = window.setInterval(() => setSecondsLeft(p => Math.max(0, p - 1)), 1000);
     return () => window.clearInterval(id);
   }, [isOpen, secondsLeft]);
+
+  // TOTP 30s window tick — sinhronizovano sa stvarnim Date.now() umesto
+  // brojanjem unazad, tako da rollover (30 -> 0 -> 30) prati pravu epoch granicu.
+  useEffect(() => {
+    if (!isOpen) return;
+    setTotpSecondsLeft(getTotpSecondsLeft());
+    const id = window.setInterval(() => {
+      setTotpSecondsLeft(getTotpSecondsLeft());
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [isOpen]);
+
+  const totpProgress = useMemo(() => getTotpProgressPercent(totpSecondsLeft), [totpSecondsLeft]);
+  const totpIndicatorColor = useMemo(
+    () => getTotpIndicatorColorClass(totpSecondsLeft),
+    [totpSecondsLeft]
+  );
 
   const formattedTime = useMemo(() => {
     const m = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
@@ -167,13 +213,11 @@ export default function VerificationModal({ isOpen, onClose, onVerified }: Verif
                 <ShieldCheck className="h-5 w-5 text-white" />
               </div>
               <div>
-                <Dialog.Title className="text-xl font-semibold">
-                  Verifikacija transakcije
+                <Dialog.Title className="text-xl font-semibold flex items-center gap-2">
+                  Verifikacija (TOTP)
                 </Dialog.Title>
                 <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-                  {otpSent
-                    ? 'Otvorite mobilnu aplikaciju za verifikacioni kod.'
-                    : 'Slanje verifikacionog koda...'}
+                  Otvori TOTP authenticator app (Google Authenticator, Authy, Microsoft Authenticator) i upisi kod. Kod se menja svakih 30 sekundi.
                 </Dialog.Description>
               </div>
             </div>
@@ -226,6 +270,36 @@ export default function VerificationModal({ isOpen, onClose, onVerified }: Verif
                   </div>
                 </div>
               )}
+
+              {/* TOTP 30s window progress indicator (RFC 6238).
+                  Pokazuje koliko sekundi ostaje u trenutnom prozoru u
+                  authenticator app-u — kad dodje do 0, kod se rotira. */}
+              <div className="space-y-1.5" data-testid="totp-window-progress-wrapper">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5" />
+                    TOTP prozor
+                  </span>
+                  <span
+                    data-testid="totp-window-seconds"
+                    className={`font-mono font-semibold ${
+                      totpSecondsLeft <= 3
+                        ? 'text-red-600 dark:text-red-400'
+                        : totpSecondsLeft <= 10
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-emerald-600 dark:text-emerald-400'
+                    }`}
+                  >
+                    Novi kod za {totpSecondsLeft}s
+                  </span>
+                </div>
+                <Progress
+                  data-testid="totp-window-progress"
+                  value={totpProgress}
+                  indicatorClassName={totpIndicatorColor}
+                  className="h-1.5"
+                />
+              </div>
 
               {/* OTP Input */}
               <div className="space-y-2">

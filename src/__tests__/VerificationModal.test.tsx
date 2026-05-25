@@ -50,7 +50,8 @@ describe('VerificationModal', () => {
       render(<VerificationModal {...defaultProps} />);
     });
 
-    expect(screen.getByText('Verifikacija transakcije')).toBeTruthy();
+    // TOTP refactor (05/2026) — naslov je sad "Verifikacija (TOTP)"
+    expect(screen.getByText('Verifikacija (TOTP)')).toBeTruthy();
     expect(screen.getByLabelText('Verifikacioni kod')).toBeTruthy();
   });
 
@@ -213,6 +214,6 @@ describe('VerificationModal', () => {
   it('does not render when isOpen is false', () => {
     render(<VerificationModal {...defaultProps} isOpen={false} />);
 
-    expect(screen.queryByText('Verifikacija transakcije')).toBeNull();
+    expect(screen.queryByText('Verifikacija (TOTP)')).toBeNull();
   });
 });
