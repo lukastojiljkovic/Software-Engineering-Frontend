@@ -106,21 +106,34 @@ export default function ResetPasswordPage() {
           </CardHeader>
           <CardContent>
             {success ? (
-              <div className="text-center space-y-4">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/30">
-                  <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+              // TODO_final C1 #2 — spec Celina 1: resetovanje lozinke automatski
+              // otklucava prethodno zakljucan nalog (AccountLockoutService). UI
+              // mora to jasno da signalizira korisniku.
+              <Alert
+                variant="success"
+                className="border-emerald-500/30 bg-emerald-500/5"
+                data-testid="reset-password-success-alert"
+              >
+                <div className="text-center space-y-4">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/30">
+                    <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold">Nalog je otkljucan</h3>
+                    <AlertDescription className="text-sm text-muted-foreground">
+                      Lozinka je uspesno promenjena i nalog je otkljucan. Sad
+                      mozes da se prijavis sa novom lozinkom.
+                    </AlertDescription>
+                  </div>
+                  <Button
+                    className="w-full bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-semibold"
+                    onClick={() => navigate('/login')}
+                    data-testid="reset-password-back-to-login"
+                  >
+                    Idi na prijavu
+                  </Button>
                 </div>
-                <h3 className="text-lg font-semibold">Lozinka uspešno promenjena!</h3>
-                <p className="text-sm text-muted-foreground">
-                  Sada se možete prijaviti sa novom lozinkom.
-                </p>
-                <Button
-                  className="w-full bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-semibold"
-                  onClick={() => navigate('/login')}
-                >
-                  Idi na prijavu
-                </Button>
-              </div>
+              </Alert>
             ) : (
               <>
                 {serverError && (

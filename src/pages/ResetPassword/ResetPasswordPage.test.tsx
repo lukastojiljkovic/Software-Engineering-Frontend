@@ -108,7 +108,7 @@ describe('ResetPasswordPage', () => {
     });
   });
 
-  it('shows success message after reset', async () => {
+  it('shows "Nalog je otkljucan" success alert after reset (TODO_final C1 #2)', async () => {
     mockSearchParams = new URLSearchParams('token=valid-token-123');
     mockResetPassword.mockResolvedValueOnce(undefined);
     const user = userEvent.setup();
@@ -119,9 +119,13 @@ describe('ResetPasswordPage', () => {
     await user.click(screen.getByRole('button', { name: /postavi novu lozinku/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/lozinka uspešno promenjena/i)).toBeInTheDocument();
+      expect(screen.getByTestId('reset-password-success-alert')).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /idi na prijavu/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Nalog je otkljucan/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Lozinka je uspesno promenjena i nalog je otkljucan/i),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('reset-password-back-to-login')).toBeInTheDocument();
   });
 
   it('navigates to login from success view', async () => {
@@ -135,10 +139,10 @@ describe('ResetPasswordPage', () => {
     await user.click(screen.getByRole('button', { name: /postavi novu lozinku/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/lozinka uspešno promenjena/i)).toBeInTheDocument();
+      expect(screen.getByTestId('reset-password-success-alert')).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('button', { name: /idi na prijavu/i }));
+    await user.click(screen.getByTestId('reset-password-back-to-login'));
     expect(mockNavigate).toHaveBeenCalledWith('/login');
   });
 
