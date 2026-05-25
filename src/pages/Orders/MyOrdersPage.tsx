@@ -37,34 +37,6 @@ import {
   ORDER_STATUS_BADGE_VARIANT,
 } from '@/utils/orderLabels';
 
-/*
- * TODO [FE3 - Filteri istorije ordera | Developer: Elena Kalajdzic]
- *
- * Dodati kontrole za filtriranje liste ordera iznad tabele/kartice sa rezultatima:
- *
- *  1. Filter po statusu ordera:
- *     - <Select> sa opcijama: Svi, PENDING, APPROVED, DONE, DECLINED (enum OrderStatus);
- *     - vrednost cuvati u lokalnom state-u (npr. selectedStatus);
- *     - FE-strana: filterovati niz orders pre prikaza (orders.filter(o => ...)).
- *
- *  2. Filter po opsegu datuma (od / do):
- *     - dva <Input type="date"> polja "Od" i "Do";
- *     - cuvati u state-u (dateFrom, dateTo);
- *     - primeniti na orders.filter(o => new Date(o.createdAt) >= dateFrom ...).
- *
- *  3. Filter po tipu hartije:
- *     - <Select> sa opcijama: Svi, STOCK, FUTURES, FOREX, OPTION;
- *     - cuvati u state-u (selectedListingType);
- *     - filterovati po o.listingType.
- *
- *  Ukoliko BE orderService.getMyOrders podrzava query parametre (status, dateFrom,
- *  dateTo, listingType), prosledjivati ih direktno u API poziv umesto FE filtriranja.
- *  Pogledati GET /orders/my ruti u GlobalSecurityConfig i OrderController.
- *
- *  Dodati dugme "Resetuj filtere" koje vraca sva tri filtera na podrazumevane vrednosti.
- */
-
-
 function getStatusBadgeVariant(status: OrderStatus) {
   return ORDER_STATUS_BADGE_VARIANT[status] ?? 'secondary';
 }

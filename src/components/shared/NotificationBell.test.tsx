@@ -1,17 +1,3 @@
-// ============================================================
-// TODO [FE1 - In-app notifikacije + zaglavlje | Developer: Marta Suljagic]
-//
-// Testovi za NotificationBell komponentu. Pratiti obrazac iz
-// ThemeToggle.test.tsx: vi.mock za zavisnosti, render + screen assert.
-//
-// Pre pisanja testova:
-//   - vi.mock('../services/notificationService', ...) sa vi.fn() za getUnreadCount
-//   - vi.mock('@/context/AuthContext', ...) koji vraca user sa id-em (prijavljen)
-//   - vi.mock('react-router-dom', ...) sa vi.fn() za useNavigate
-//   - Koristiti vitest fake timers (vi.useFakeTimers / vi.useRealTimers) da
-//     kontrolisete setInterval bez cekanja 30s u testovima
-// ============================================================
-
 import { describe, it } from 'vitest';
 
 describe('NotificationBell', () => {

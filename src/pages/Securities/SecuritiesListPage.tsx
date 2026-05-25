@@ -46,28 +46,6 @@ import {
 } from '@/components/ui/table';
 import AddToWatchlistButton from '@/components/watchlist/AddToWatchlistButton';
 
-/*
- * TODO [FE2 - Watchlist + cenovni alarmi | Developer: Antonije Ilic]
- *
- * U svakom redu/kartici hartije u ovoj listi dodati:
- *
- *  1. Dugme "Dodaj na watchlist" (komponenta AddToWatchlistButton):
- *     - poziva watchlistService.addToWatchlist(listingId) pri kliku;
- *     - ako je hartija vec na watchlist-u, dugme prikazuje stanje "Pracena"
- *       i nudi opciju uklanjanja (removeFromWatchlist);
- *     - stanje watchlist-a fetchovati pri mount-u i cuvati u lokalnom state-u
- *       kako bi se ikonica ispravno prikazala bez dodatnih zahteva.
- *
- *  2. Ulaz za kreiranje cenovnog alarma (komponenta PriceAlertDialog):
- *     - Dialog/modal sa poljima: tip (iznad/ispod), ciljana cena, napomena;
- *     - poziva priceAlertService.createAlert({ listingId, direction, targetPrice });
- *     - validacija: targetPrice mora biti pozitivan broj razlicit od 0;
- *     - toast potvrda pri uspesnom kreiranju alarma.
- *
- *  Komponente AddToWatchlistButton i PriceAlertDialog kreirati u
- *  src/components/securities/ i uvesti ovde.
- */
-
 type ListingTab = 'STOCK' | 'FUTURES' | 'FOREX';
 
 const TAB_LABELS: Record<ListingTab, string> = {
