@@ -1,57 +1,386 @@
 // ============================================================
-// TODO [FE1 - In-app notifikacije + zaglavlje | Developer: Marta Suljagic]
+// FE1 - In-app notifikacije + zaglavlje | Developer: Marta Suljagic
 //
-// Stranica sa listom in-app notifikacija za prijavljenog korisnika.
-// Dostupna na ruti /notifications (svi prijavljeni korisnici).
-//
-// IMPLEMENTIRATI:
-//   - Ucitavanje: useEffect na mount-u poziva notificationService.listNotifications()
-//     sa page=0, size=20. Lazy load sledecih strana kroz "Ucitaj jos" dugme
-//     (append, ne zamena) ili infinite scroll.
-//   - Filter: dve opcije u SegmentedControl ili Tabs komponentama shadcn/ui:
-//       "Sve" (bez filtera) i "Neprocitane" (read=false)
-//     Menjanje filtera resetuje na prvu stranu.
-//   - Prikaz svake notifikacije kao Card:
-//       - Ikona tipa (Lucide ikona po NotificationType — npr. DollarSign za
-//         PAYMENT_*, TrendingUp za ORDER_*, Handshake za OTC_*, PiggyBank za
-//         FUND_*, CreditCard za CARD_*, Lock za ACCOUNT_*)
-//       - Naslov (bold ako nije procitana)
-//       - Poruka (text-muted-foreground, clampovano na 2 reda)
-//       - Vreme (relativno — npr. "pre 5 min"; koristiti date-fns ili rucno)
-//       - Desno: ako read=false, plava tacka indikator + dugme "Oznaci procitanom"
-//         (klik zove notificationService.markAsRead(id) + azurira lokalni state)
-//   - Header akcija: dugme "Oznaci sve procitanim" (disabled ako nema neprocitanih)
-//     — zove notificationService.markAllAsRead() + refetch
-//   - Loading state: Skeleton sa animate-pulse (isti obrazac kao SavingsListPage)
-//   - Empty state: Bell ikona + "Nemate notifikacija" poruka
-//   - Error handling: toast.error('Greska pri ucitavanju notifikacija')
-//   - data-testid="notifications-page" na root div
-//   - data-testid="notification-item-{id}" na svakom Card-u
-//   - data-testid="mark-all-read-btn" na "Oznaci sve" dugmetu
-//   - data-testid="mark-read-btn-{id}" na per-notifikacija dugmetu
-//
-// Konvencija: pratiti SavingsListPage.tsx kao sablon — PageHeader sa ikonom
-//   i title-om, useEffect + useState, toast.error iz '@/lib/notify',
-//   Card/Badge/Button iz '@/components/ui/', Skeleton za loading stanje.
+// In-app notifikacioni inboks. Dostupno svim ulogovanim korisnicima.
 // Spec: Zadaci_Frontend.pdf, FE1.
 // ============================================================
 
-import { Bell } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Bell,
+  Banknote,
+  ShoppingCart,
+  Handshake,
+  CreditCard,
+  FileText,
+  PiggyBank,
+  Lock,
+  AlertCircle,
+  CheckCheck,
+  Inbox,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import PageHeader from '@/components/shared/PageHeader';
+import { toast } from '@/lib/notify';
+import { notificationService } from '@/services/notificationService';
+import {
+  type NotificationDto,
+  type NotificationType,
+  NOTIFICATION_TYPE_LABEL_SR,
+} from '@/types/notification';
+import { cn } from '@/lib/utils';
+
+const PAGE_SIZE = 20;
+
+type FilterMode = 'ALL' | 'UNREAD';
+
+const ICON_BY_TYPE: Record<NotificationType, React.ComponentType<{ className?: string }>> = {
+  PAYMENT_RECEIVED: Banknote,
+  PAYMENT_SENT: Banknote,
+  ORDER_FILLED: ShoppingCart,
+  ORDER_DECLINED: ShoppingCart,
+  OTC_OFFER_RECEIVED: Handshake,
+  OTC_OFFER_ACCEPTED: Handshake,
+  OTC_OFFER_DECLINED: Handshake,
+  OTC_CONTRACT_EXERCISED: Handshake,
+  OTC_CONTRACT_EXPIRED: Handshake,
+  FUND_INTEREST_PAID: PiggyBank,
+  FUND_DEPOSIT_MATURED: PiggyBank,
+  LOAN_APPROVED: FileText,
+  LOAN_DECLINED: FileText,
+  LOAN_PAYMENT_DUE: FileText,
+  CARD_BLOCKED: CreditCard,
+  CARD_UNBLOCKED: CreditCard,
+  ACCOUNT_LOCKED: Lock,
+  GENERIC: Bell,
+};
+
+function resolveDeepLink(n: NotificationDto): string | null {
+  const t = n.relatedEntityType?.toUpperCase();
+  if (!t) return null;
+  if (t === 'PAYMENT') return '/payments/history';
+  if (t === 'ORDER') return '/orders/my';
+  if (t === 'OTC_OFFER' || t === 'OTC_CONTRACT') return '/otc';
+  if (t === 'FUND') return n.relatedEntityId ? `/funds/${n.relatedEntityId}` : '/funds';
+  if (t === 'CARD') return '/cards';
+  if (t === 'LOAN') return '/loans';
+  if (t === 'ACCOUNT') return '/accounts';
+  return null;
+}
+
+function formatDateTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('sr-RS', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return iso;
+  }
+}
 
 export default function NotificationsPage() {
+  const navigate = useNavigate();
+  const [items, setItems] = useState<NotificationDto[]>([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [filter, setFilter] = useState<FilterMode>('ALL');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const load = useCallback(
+    async (targetPage: number, mode: FilterMode) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params: { read?: boolean; page: number; size: number } = {
+          page: targetPage,
+          size: PAGE_SIZE,
+        };
+        if (mode === 'UNREAD') params.read = false;
+        const data = await notificationService.listNotifications(params);
+        setItems(data.content ?? []);
+        setTotalPages(data.totalPages ?? 0);
+        setPage(data.number ?? targetPage);
+      } catch {
+        setError('Neuspeh ucitavanja notifikacija.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const refreshUnreadCount = useCallback(async () => {
+    try {
+      const { count } = await notificationService.getUnreadCount();
+      setUnreadCount(count ?? 0);
+    } catch {
+      // best-effort
+    }
+  }, []);
+
+  useEffect(() => {
+    void load(0, filter);
+    void refreshUnreadCount();
+  }, [filter, load, refreshUnreadCount]);
+
+  const handleMarkAllRead = useCallback(async () => {
+    try {
+      await notificationService.markAllAsRead();
+      toast.success('Sve notifikacije oznacene kao procitane.');
+      await load(page, filter);
+      await refreshUnreadCount();
+    } catch {
+      toast.error('Neuspeh oznacavanja kao procitano.');
+    }
+  }, [filter, load, page, refreshUnreadCount]);
+
+  const handleRowClick = useCallback(
+    async (n: NotificationDto) => {
+      // Optimisticki update — odmah obelezi kao procitano u UI-u.
+      if (!n.read) {
+        setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+        try {
+          await notificationService.markAsRead(n.id);
+          await refreshUnreadCount();
+        } catch {
+          // Vrati state ako padne.
+          setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: false } : x)));
+          toast.error('Neuspeh oznacavanja notifikacije.');
+        }
+      }
+      const link = resolveDeepLink(n);
+      if (link) navigate(link);
+    },
+    [navigate, refreshUnreadCount]
+  );
+
+  const hasItems = items.length > 0;
+  const canPrev = page > 0;
+  const canNext = page < totalPages - 1;
+  const allMarkDisabled = unreadCount === 0;
+
   return (
-    <div className="container mx-auto p-6 max-w-4xl" data-testid="notifications-page">
+    <div
+      className="container mx-auto p-6 max-w-4xl"
+      data-testid="notifications-page"
+    >
       <div className="mb-6">
         <PageHeader
           icon={<Bell className="h-5 w-5" />}
           title="Notifikacije"
-          description="Vasa obavestenja o aktivnostima na nalogu"
+          description="Sva obavestenja o tvom nalogu i aktivnostima"
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleMarkAllRead}
+              disabled={allMarkDisabled}
+              data-testid="mark-all-read-btn"
+            >
+              <CheckCheck className="w-4 h-4 mr-2" />
+              Oznaci sve kao procitano
+            </Button>
+          }
         />
       </div>
-      <p className="text-muted-foreground text-sm">
-        Implementacija na cekanju — videti TODO blok na vrhu fajla.
-      </p>
+
+      {/* Filter tabs */}
+      <Card className="p-2 mb-4">
+        <div className="flex items-center gap-1">
+          <FilterTab
+            active={filter === 'ALL'}
+            onClick={() => setFilter('ALL')}
+            label="Sve"
+            testid="filter-all"
+          />
+          <FilterTab
+            active={filter === 'UNREAD'}
+            onClick={() => setFilter('UNREAD')}
+            label={`Neprocitane${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
+            testid="filter-unread"
+          />
+        </div>
+      </Card>
+
+      {/* Body */}
+      {loading ? (
+        <NotificationsSkeleton />
+      ) : error ? (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Greska</AlertTitle>
+          <AlertDescription>
+            {error}{' '}
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => load(page, filter)}
+              data-testid="reload-btn"
+            >
+              Pokusaj ponovo
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : !hasItems ? (
+        <Card className="p-12 text-center" data-testid="empty-state">
+          <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+            <Inbox className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-xl font-semibold mb-2">Nemate notifikacija</h3>
+          <p className="text-muted-foreground">
+            {filter === 'UNREAD'
+              ? 'Sve notifikacije su procitane.'
+              : 'Cim se nesto desi na tvom nalogu, javicemo ti ovde.'}
+          </p>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {items.map((n) => (
+            <NotificationRow key={n.id} item={n} onClick={() => handleRowClick(n)} />
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && !error && totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!canPrev}
+            onClick={() => load(page - 1, filter)}
+            data-testid="prev-page"
+          >
+            Prethodna
+          </Button>
+          <div className="text-sm text-muted-foreground" data-testid="page-indicator">
+            Strana {page + 1} od {totalPages}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!canNext}
+            onClick={() => load(page + 1, filter)}
+            data-testid="next-page"
+          >
+            Sledeca
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FilterTab({
+  active,
+  onClick,
+  label,
+  testid,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  testid: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testid}
+      className={cn(
+        'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+        active
+          ? 'bg-gradient-to-r from-indigo-500/15 to-violet-500/15 text-indigo-600 dark:text-indigo-400 shadow-sm'
+          : 'text-muted-foreground hover:bg-accent'
+      )}
+      aria-pressed={active ? 'true' : 'false'}
+    >
+      {label}
+    </button>
+  );
+}
+
+function NotificationRow({
+  item,
+  onClick,
+}: {
+  item: NotificationDto;
+  onClick: () => void;
+}) {
+  const Icon = ICON_BY_TYPE[item.type] ?? Bell;
+  return (
+    <Card
+      onClick={onClick}
+      data-testid={`notification-row-${item.id}`}
+      className={cn(
+        'p-4 flex gap-3 cursor-pointer transition-colors hover:bg-accent/40',
+        !item.read && 'border-indigo-500/40'
+      )}
+    >
+      <div
+        className={cn(
+          'w-10 h-10 rounded-full flex items-center justify-center shrink-0',
+          !item.read
+            ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white'
+            : 'bg-muted text-muted-foreground'
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              'truncate text-sm',
+              !item.read ? 'font-semibold' : 'text-muted-foreground'
+            )}
+          >
+            {item.title}
+          </span>
+          <Badge variant="secondary" className="ml-auto shrink-0 text-[10px]">
+            {NOTIFICATION_TYPE_LABEL_SR[item.type] ?? 'Obavestenje'}
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+          {item.message}
+        </p>
+        <p className="text-xs text-muted-foreground/70 mt-1">
+          {formatDateTime(item.createdAt)}
+        </p>
+      </div>
+      {!item.read && (
+        <span
+          aria-label="Neprocitano"
+          data-testid={`unread-dot-${item.id}`}
+          className="mt-1 h-2 w-2 rounded-full bg-indigo-500 shrink-0"
+        />
+      )}
+    </Card>
+  );
+}
+
+function NotificationsSkeleton() {
+  return (
+    <div className="space-y-2" data-testid="notifications-loading">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Card key={i} className="p-4 flex gap-3 animate-pulse">
+          <div className="w-10 h-10 rounded-full bg-muted" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 w-1/3 bg-muted rounded" />
+            <div className="h-3 w-2/3 bg-muted rounded" />
+          </div>
+        </Card>
+      ))}
     </div>
   );
 }

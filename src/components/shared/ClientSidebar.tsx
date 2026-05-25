@@ -34,6 +34,7 @@ import { Button } from '../ui/button';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { cn } from '@/lib/utils';
 import ThemeToggle from './ThemeToggle';
+import NotificationBell from './NotificationBell';
 
 interface SidebarItem {
   label: string;
@@ -262,6 +263,9 @@ export default function ClientSidebar() {
             </p>
             <p className="text-xs text-muted-foreground">{getRoleName()}</p>
           </div>
+          {/* FE1: NotificationBell ide direktno u sidebar user kartici
+              (po Lukinoj direktivi 25.05.2026 — NE u Header.tsx). */}
+          <NotificationBell />
         </div>
 
         <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-hidden">

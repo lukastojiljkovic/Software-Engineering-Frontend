@@ -1,41 +1,73 @@
 // ============================================================
-// TODO [FE1 - In-app notifikacije + zaglavlje | Developer: Marta Suljagic]
+// FE1 - In-app notifikacije + zaglavlje | Developer: Marta Suljagic
 //
-// Tipovi za sistem in-app notifikacija. Ovaj fajl definise sve
-// TS interfejse i union tipove koji se koriste u notificationService,
-// NotificationBell i NotificationsPage.
-//
-// IMPLEMENTIRATI:
-//   - NotificationType — union string literal svih mogucih tipova:
-//       'PAYMENT_RECEIVED' | 'PAYMENT_SENT' | 'ORDER_FILLED' |
-//       'ORDER_DECLINED' | 'OTC_OFFER_RECEIVED' | 'OTC_OFFER_ACCEPTED' |
-//       'OTC_OFFER_DECLINED' | 'OTC_CONTRACT_EXERCISED' |
-//       'OTC_CONTRACT_EXPIRED' | 'FUND_INTEREST_PAID' |
-//       'FUND_DEPOSIT_MATURED' | 'LOAN_APPROVED' | 'LOAN_DECLINED' |
-//       'LOAN_PAYMENT_DUE' | 'CARD_BLOCKED' | 'CARD_UNBLOCKED' |
-//       'ACCOUNT_LOCKED' | 'GENERIC'
-//   - NotificationDto — interfejs koji odgovara BE odgovoru:
-//       id: number
-//       type: NotificationType
-//       title: string           — kratki naslov (max ~80 znakova)
-//       message: string         — duzi opis dogadjaja
-//       read: boolean
-//       createdAt: string       — ISO 8601
-//       relatedEntityType?: string   — opciono: 'PAYMENT' | 'ORDER' | 'OTC_OFFER' | ...
-//       relatedEntityId?: number     — opciono: ID povezanog entiteta
-//   - NotificationPageDto<T> — paginiran wrapper (paritet sa PageDto u savings.ts):
-//       content: T[]
-//       totalElements: number
-//       totalPages: number
-//       number: number
-//       size: number
-//   - UnreadCountDto — { count: number } (odgovor na GET /notifications/unread-count)
-//   - NOTIFICATION_TYPE_LABEL_SR: Record<NotificationType, string> — mapa srpskih labela
-//       npr. PAYMENT_RECEIVED: 'Primljeno placanje', ORDER_FILLED: 'Order izvrsit', itd.
-//
-// Konvencija: pratiti postojecu `Savings` feature celinu kao sablon
-//   (videti src/types/savings.ts — union tipovi, const mape labela, interfejsi).
+// Tipovi za sistem in-app notifikacija. Koristi se u
+// notificationService, NotificationBell i NotificationsPage.
 // Spec: Zadaci_Frontend.pdf, FE1.
 // ============================================================
 
-export {};
+export type NotificationType =
+  | 'PAYMENT_RECEIVED'
+  | 'PAYMENT_SENT'
+  | 'ORDER_FILLED'
+  | 'ORDER_DECLINED'
+  | 'OTC_OFFER_RECEIVED'
+  | 'OTC_OFFER_ACCEPTED'
+  | 'OTC_OFFER_DECLINED'
+  | 'OTC_CONTRACT_EXERCISED'
+  | 'OTC_CONTRACT_EXPIRED'
+  | 'FUND_INTEREST_PAID'
+  | 'FUND_DEPOSIT_MATURED'
+  | 'LOAN_APPROVED'
+  | 'LOAN_DECLINED'
+  | 'LOAN_PAYMENT_DUE'
+  | 'CARD_BLOCKED'
+  | 'CARD_UNBLOCKED'
+  | 'ACCOUNT_LOCKED'
+  | 'GENERIC';
+
+export interface NotificationDto {
+  id: number;
+  type: NotificationType;
+  title: string;
+  message: string;
+  read: boolean;
+  /** ISO 8601 timestamp */
+  createdAt: string;
+  /** Opciono: 'PAYMENT' | 'ORDER' | 'OTC_OFFER' | 'OTC_CONTRACT' | 'FUND' | 'LOAN' | 'CARD' | 'ACCOUNT' */
+  relatedEntityType?: string;
+  relatedEntityId?: number;
+}
+
+export interface NotificationPageDto<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export interface UnreadCountDto {
+  count: number;
+}
+
+export const NOTIFICATION_TYPE_LABEL_SR: Record<NotificationType, string> = {
+  PAYMENT_RECEIVED: 'Primljeno placanje',
+  PAYMENT_SENT: 'Poslato placanje',
+  ORDER_FILLED: 'Order izvrsen',
+  ORDER_DECLINED: 'Order odbijen',
+  OTC_OFFER_RECEIVED: 'Primljena OTC ponuda',
+  OTC_OFFER_ACCEPTED: 'Prihvacena OTC ponuda',
+  OTC_OFFER_DECLINED: 'Odbijena OTC ponuda',
+  OTC_CONTRACT_EXERCISED: 'OTC ugovor iskoriscen',
+  OTC_CONTRACT_EXPIRED: 'OTC ugovor istekao',
+  FUND_INTEREST_PAID: 'Isplacena kamata fonda',
+  FUND_DEPOSIT_MATURED: 'Dospelo fond ulaganje',
+  LOAN_APPROVED: 'Kredit odobren',
+  LOAN_DECLINED: 'Kredit odbijen',
+  LOAN_PAYMENT_DUE: 'Dospela rata kredita',
+  CARD_BLOCKED: 'Kartica blokirana',
+  CARD_UNBLOCKED: 'Kartica odblokirana',
+  ACCOUNT_LOCKED: 'Nalog zakljucan',
+  GENERIC: 'Obavestenje',
+};

@@ -72,6 +72,9 @@ import ChessGamePage from './pages/WaitingRoom/ChessGamePage';
 import Banka2RushGamePage from './pages/WaitingRoom/Banka2RushGamePage';
 import ProfitBankPage from './pages/ProfitBank/ProfitBankPage';
 
+// FE1 - In-app notifikacije
+import NotificationsPage from './pages/Notifications/NotificationsPage';
+
 // Stedna knjizica
 import SavingsListPage from './pages/Savings/SavingsListPage';
 import SavingsNewDepositPage from './pages/Savings/SavingsNewDepositPage';
@@ -142,6 +145,8 @@ export default function App() {
 
           {/* Celina 2 - Klijentske rute */}
           <Route path="/home" element={<HomePage />} />
+          {/* FE1: In-app notifikacioni inboks (svi prijavljeni korisnici). */}
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/accounts" element={<AccountListPage />} />
           <Route path="/accounts/:id" element={<AccountDetailsPage />} />
           <Route path="/accounts/:id/business" element={<BusinessAccountDetailsPage />} />
