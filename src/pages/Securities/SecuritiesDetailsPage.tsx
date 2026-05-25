@@ -16,7 +16,9 @@ import {
   Clock,
   Link2,
   RefreshCw,
+  BellRing,
 } from 'lucide-react';
+import PriceAlertDialog from '@/components/pricealert/PriceAlertDialog';
 import type { Listing, ListingDailyPrice, OptionChain } from '@/types/celina3';
 import listingService from '@/services/listingService';
 import { toast } from '@/lib/notify';
@@ -183,6 +185,9 @@ export default function SecuritiesDetailsPage() {
   const [optionsError, setOptionsError] = useState(false);
   const [selectedSettlementDate, setSelectedSettlementDate] = useState<string>('');
   const [strikeCountFilter, setStrikeCountFilter] = useState<string>('ALL');
+
+  // Price alert dialog state.
+  const [alertOpen, setAlertOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -369,8 +374,33 @@ export default function SecuritiesDetailsPage() {
               <span className="text-xs ml-1">({isPositive ? '+' : ''}{changePct.toFixed(2)}%)</span>
             </span>
           </div>
+          <div className="mt-3 flex justify-start lg:justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAlertOpen(true)}
+              data-testid="securities-set-alert-button"
+              className="gap-1.5"
+            >
+              <BellRing className="h-4 w-4" />
+              Postavi cenovni alarm
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Price alert dialog */}
+      <PriceAlertDialog
+        open={alertOpen}
+        onOpenChange={setAlertOpen}
+        initialListing={{
+          id: listing.id,
+          ticker: listing.ticker,
+          currentPrice: listing.price,
+          type: listing.listingType,
+          currency: listing.baseCurrency ?? listing.quoteCurrency,
+        }}
+      />
 
       {/* Main content grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
