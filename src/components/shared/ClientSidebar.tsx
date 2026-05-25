@@ -35,6 +35,7 @@ import { Avatar, AvatarFallback } from '../ui/avatar';
 import { cn } from '@/lib/utils';
 import ThemeToggle from './ThemeToggle';
 import NotificationBell from './NotificationBell';
+import WatchlistQuickAccess from '../watchlist/WatchlistQuickAccess';
 
 interface SidebarItem {
   label: string;
@@ -353,6 +354,11 @@ export default function ClientSidebar() {
             </div>
           )}
         </nav>
+
+        {/* FE2: Watchlist Quick Access — kompaktan widget iznad logout dugmeta */}
+        <div className="shrink-0 mt-3">
+          <WatchlistQuickAccess />
+        </div>
 
         <div className="shrink-0 space-y-2 border-t pt-4 mt-auto">
           {/*

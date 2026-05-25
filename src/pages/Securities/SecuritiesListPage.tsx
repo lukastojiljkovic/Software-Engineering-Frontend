@@ -44,6 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import AddToWatchlistButton from '@/components/watchlist/AddToWatchlistButton';
 
 /*
  * TODO [FE2 - Watchlist + cenovni alarmi | Developer: Antonije Ilic]
@@ -813,6 +814,7 @@ export default function SecuritiesListPage() {
                     </TableHead>
                     {activeTab === 'FUTURES' && <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Istek</TableHead>}
                     {activeTab === 'FOREX' && <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Par</TableHead>}
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 text-center w-[60px]">Akcije</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -907,6 +909,14 @@ export default function SecuritiesListPage() {
                             </span>
                           </TableCell>
                         )}
+                        {/* Akcije: dodaj na watchlist */}
+                        <TableCell className="py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <AddToWatchlistButton
+                            listingId={listing.id}
+                            listingTicker={listing.ticker}
+                            variant="icon"
+                          />
+                        </TableCell>
                       </TableRow>
                     );
                   })}

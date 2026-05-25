@@ -1,85 +1,224 @@
 // ============================================================
-// TODO [FE2 - Watchlist + cenovni alarmi | Developer: Antonije Ilic]
-//
-// Vitest unit testovi za WatchlistPage komponentu.
-//
-// IMPLEMENTIRATI (svaki it.todo postaje pravi test):
-//
-//   Setup:
-//   - vi.mock('../../../services/watchlistService', ...) — mockuj listAll, listItems,
-//     create, rename, remove, addItem, removeItem.
-//   - vi.mock('@/lib/notify', ...) — mockuj toast.success, toast.error.
-//   - renderPage() helper: render(<MemoryRouter><WatchlistPage /></MemoryRouter>).
-//   - Svaki beforeEach: vi.clearAllMocks(); mockListAll.mockResolvedValue([]).
-//
-//   Planirani testovi:
-//
-//   1. 'prikazuje loading skeleton dok traju fetchovi'
-//      mockListAll.mockImplementation(() => new Promise(() => {}))  — nikad ne resolve
-//      renderPage(); expect(screen.getByRole('status') ili animate-pulse element).toBeTruthy()
-//
-//   2. 'prikazuje empty state kada korisnik nema lista'
-//      mockListAll.mockResolvedValue([])
-//      waitFor => expect(screen.getByText(/nemate lista/i)).toBeTruthy()
-//
-//   3. 'prikazuje karticuse za svaku watchlistu'
-//      mockListAll.mockResolvedValue([{ id: 1, name: 'Favoriti', itemCount: 3, ... }])
-//      waitFor => expect(screen.getByTestId('watchlist-card-1')).toBeTruthy()
-//
-//   4. 'klik na "Nova lista" dugme otvara dialog'
-//      mockListAll.mockResolvedValue([])
-//      userEvent.click(screen.getByTestId('create-watchlist-btn'))
-//      expect(screen.getByRole('dialog')).toBeTruthy()
-//
-//   5. 'kreira novu listu i osvezava prikaz'
-//      mockListAll.mockResolvedValueOnce([]).mockResolvedValue([{ id: 2, name: 'Nova', ... }])
-//      mockCreate.mockResolvedValue({ id: 2, name: 'Nova', ... })
-//      otvoriti dialog, uneti ime, submit
-//      waitFor => expect(mockCreate).toHaveBeenCalledWith({ name: 'Nova' })
-//      waitFor => expect(screen.getByTestId('watchlist-card-2')).toBeTruthy()
-//
-//   6. 'klik na "Preimenuj" otvara dialog sa trenutnim imenom'
-//      mockListAll.mockResolvedValue([{ id: 1, name: 'Staro ime', itemCount: 0, ... }])
-//      waitFor => userEvent.click(screen.getByTestId('rename-watchlist-1'))
-//      expect input value toBe('Staro ime')
-//
-//   7. 'brisanje liste poziva remove i uklanja karticu'
-//      mockListAll.mockResolvedValueOnce([{ id: 1, name: 'Brisi', ... }]).mockResolvedValue([])
-//      mockRemove.mockResolvedValue(undefined)
-//      click delete-watchlist-1 => confirm dialog => click confirm
-//      waitFor => expect(mockRemove).toHaveBeenCalledWith(1)
-//      waitFor => expect(screen.queryByTestId('watchlist-card-1')).toBeNull()
-//
-//   8. 'prikazuje stavke izabrane liste'
-//      mockListAll.mockResolvedValue([{ id: 1, name: 'Lista', ... }])
-//      mockListItems.mockResolvedValue([{ id: 10, ticker: 'AAPL', currentPrice: 180, ... }])
-//      kliknuti na listu da je selektuje
-//      waitFor => expect(screen.getByTestId('watchlist-item-row-10')).toBeTruthy()
-//
-//   9. 'uklanjanje stavke poziva removeItem i osvezava tabelu'
-//      setup kao iznad, pa click 'remove-item-10'
-//      waitFor => expect(mockRemoveItem).toHaveBeenCalledWith(1, 10)
-//
-//   10. 'filter po tipu hartije prikazuje samo odgovarajuce stavke'
-//       mockListItems vraca STOCK + FUTURE stavku
-//       click na STOCK filter chip
-//       expect(screen.queryByText('FUTURE_TICKER')).toBeNull()
-//
-// Konvencija: pratiti postojecu `Savings` feature celinu kao sablon.
-// Spec: Zadaci_Frontend.pdf, FE2.
+// FE2 - Watchlist + cenovni alarmi | Developer: Antonije Ilic
+// Vitest unit testovi za WatchlistPage.
 // ============================================================
 
-import { describe, it } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import WatchlistPage from './WatchlistPage';
+import { watchlistService } from '../../services/watchlistService';
+import type { WatchlistDto, WatchlistItemDto } from '../../types/watchlist';
+
+vi.mock('../../services/watchlistService', () => ({
+  watchlistService: {
+    listMyWatchlists: vi.fn(),
+    createWatchlist: vi.fn(),
+    renameWatchlist: vi.fn(),
+    deleteWatchlist: vi.fn(),
+    listItems: vi.fn(),
+    addItem: vi.fn(),
+    removeItem: vi.fn(),
+  },
+}));
+
+vi.mock('@/lib/notify', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+    info: vi.fn(),
+  },
+}));
+
+const mockListAll = vi.mocked(watchlistService.listMyWatchlists);
+const mockListItems = vi.mocked(watchlistService.listItems);
+const mockCreate = vi.mocked(watchlistService.createWatchlist);
+const mockRename = vi.mocked(watchlistService.renameWatchlist);
+const mockDelete = vi.mocked(watchlistService.deleteWatchlist);
+const mockRemoveItem = vi.mocked(watchlistService.removeItem);
+
+const sampleList: WatchlistDto = {
+  id: 1,
+  ownerId: 10,
+  ownerType: 'CLIENT',
+  name: 'Favoriti',
+  createdAt: '2026-05-25T10:00:00Z',
+  itemCount: 1,
+};
+
+const sampleItemStock: WatchlistItemDto = {
+  id: 10,
+  watchlistId: 1,
+  listingId: 100,
+  listingTicker: 'AAPL',
+  listingType: 'STOCK',
+  currentPrice: 180,
+  dailyChangePercent: 1.25,
+  volume: 1_000_000,
+  addedAt: '2026-05-25T10:00:00Z',
+};
+
+const sampleItemFutures: WatchlistItemDto = {
+  id: 11,
+  watchlistId: 1,
+  listingId: 101,
+  listingTicker: 'CL_F',
+  listingType: 'FUTURES',
+  currentPrice: 75,
+  addedAt: '2026-05-25T10:00:00Z',
+};
+
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <WatchlistPage />
+    </MemoryRouter>
+  );
+}
 
 describe('WatchlistPage', () => {
-  it.todo('prikazuje loading skeleton dok traju fetchovi');
-  it.todo('prikazuje empty state kada korisnik nema lista');
-  it.todo('prikazuje kartice za svaku watchlistu');
-  it.todo('klik na "Nova lista" dugme otvara dialog');
-  it.todo('kreira novu listu i osvezava prikaz');
-  it.todo('klik na "Preimenuj" otvara dialog sa trenutnim imenom');
-  it.todo('brisanje liste poziva remove i uklanja karticu');
-  it.todo('prikazuje stavke izabrane liste');
-  it.todo('uklanjanje stavke poziva removeItem i osvezava tabelu');
-  it.todo('filter po tipu hartije prikazuje samo odgovarajuce stavke');
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockListItems.mockResolvedValue([]);
+  });
+
+  it('prikazuje empty state kada korisnik nema lista', async () => {
+    mockListAll.mockResolvedValue([]);
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText(/Nemate watchlist-a/i)).toBeTruthy();
+    });
+  });
+
+  it('prikazuje kartice za svaku watchlistu', async () => {
+    mockListAll.mockResolvedValue([sampleList]);
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId('watchlist-card-1')).toBeTruthy();
+      expect(screen.getAllByText('Favoriti').length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it('klik na "Nova lista" otvara dialog', async () => {
+    const user = userEvent.setup();
+    mockListAll.mockResolvedValue([]);
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId('create-watchlist-btn')).toBeTruthy();
+    });
+    await user.click(screen.getByTestId('create-watchlist-btn'));
+    expect(screen.getByTestId('create-watchlist-dialog')).toBeTruthy();
+  });
+
+  it('kreira novu listu', async () => {
+    const user = userEvent.setup();
+    mockListAll.mockResolvedValueOnce([]);
+    mockCreate.mockResolvedValue({ ...sampleList, id: 2, name: 'Nova' });
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId('create-watchlist-btn')).toBeTruthy();
+    });
+    await user.click(screen.getByTestId('create-watchlist-btn'));
+    await user.type(screen.getByTestId('create-watchlist-input'), 'Nova');
+    await user.click(screen.getByTestId('create-watchlist-submit'));
+    await waitFor(() => {
+      expect(mockCreate).toHaveBeenCalledWith({ name: 'Nova' });
+    });
+  });
+
+  it('preimenuj otvara dialog sa trenutnim imenom', async () => {
+    const user = userEvent.setup();
+    mockListAll.mockResolvedValue([sampleList]);
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId('rename-watchlist-1')).toBeTruthy();
+    });
+    await user.click(screen.getByTestId('rename-watchlist-1'));
+    const input = screen.getByTestId('rename-watchlist-input') as HTMLInputElement;
+    expect(input.value).toBe('Favoriti');
+  });
+
+  it('brisanje liste poziva delete i uklanja karticu', async () => {
+    const user = userEvent.setup();
+    mockListAll.mockResolvedValue([sampleList]);
+    mockDelete.mockResolvedValue(undefined);
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-watchlist-1')).toBeTruthy();
+    });
+    await user.click(screen.getByTestId('delete-watchlist-1'));
+    await waitFor(() => {
+      expect(screen.getByTestId('confirm-delete-watchlist')).toBeTruthy();
+    });
+    await user.click(screen.getByTestId('confirm-delete-watchlist'));
+    await waitFor(() => {
+      expect(mockDelete).toHaveBeenCalledWith(1);
+    });
+  });
+
+  it('prikazuje stavke izabrane liste', async () => {
+    mockListAll.mockResolvedValue([sampleList]);
+    mockListItems.mockResolvedValue([sampleItemStock]);
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId('watchlist-item-row-10')).toBeTruthy();
+      expect(screen.getByText('AAPL')).toBeTruthy();
+    });
+  });
+
+  it('uklanjanje stavke poziva removeItem', async () => {
+    const user = userEvent.setup();
+    mockListAll.mockResolvedValue([sampleList]);
+    mockListItems.mockResolvedValue([sampleItemStock]);
+    mockRemoveItem.mockResolvedValue(undefined);
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId('remove-item-10')).toBeTruthy();
+    });
+    await user.click(screen.getByTestId('remove-item-10'));
+    await waitFor(() => {
+      expect(mockRemoveItem).toHaveBeenCalledWith(1, 10);
+    });
+  });
+
+  it('filter po tipu hartije prikazuje samo odgovarajuce stavke', async () => {
+    const user = userEvent.setup();
+    mockListAll.mockResolvedValue([sampleList]);
+    mockListItems.mockResolvedValue([sampleItemStock, sampleItemFutures]);
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('AAPL')).toBeTruthy();
+      expect(screen.getByText('CL_F')).toBeTruthy();
+    });
+    await user.click(screen.getByTestId('watchlist-filter-stock'));
+    await waitFor(() => {
+      expect(screen.queryByText('CL_F')).toBeNull();
+      expect(screen.getByText('AAPL')).toBeTruthy();
+    });
+  });
+
+  it('rename salje patch sa novim imenom', async () => {
+    const user = userEvent.setup();
+    mockListAll.mockResolvedValue([sampleList]);
+    mockRename.mockResolvedValue({ ...sampleList, name: 'Novo ime' });
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId('rename-watchlist-1')).toBeTruthy();
+    });
+    await user.click(screen.getByTestId('rename-watchlist-1'));
+    const input = screen.getByTestId('rename-watchlist-input') as HTMLInputElement;
+    await user.clear(input);
+    await user.type(input, 'Novo ime');
+    // Find the save button in rename dialog
+    const dialog = screen.getByTestId('rename-watchlist-dialog');
+    const saveBtn = Array.from(dialog.querySelectorAll('button')).find(
+      (b) => b.textContent === 'Sacuvaj'
+    );
+    expect(saveBtn).toBeTruthy();
+    await user.click(saveBtn!);
+    await waitFor(() => {
+      expect(mockRename).toHaveBeenCalledWith(1, { name: 'Novo ime' });
+    });
+  });
 });

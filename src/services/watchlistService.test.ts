@@ -1,84 +1,140 @@
-// ============================================================
-// TODO [FE2 - Watchlist + cenovni alarmi | Developer: Antonije Ilic]
-//
-// Vitest unit testovi za watchlistService — po jedan test po javnoj metodi servisa.
-//
-// IMPLEMENTIRATI:
-//
-//   Setup:
-//   - vi.mock('../api') => mockApi = vi.mocked(api)
-//   - beforeEach: vi.clearAllMocks()
-//
-//   Planirani testovi (obrazac: mockApi.get/post/patch/delete.mockResolvedValue({ data: ... })):
-//
-//   1. 'listAll salje GET /watchlists i vraca niz lista'
-//      mockApi.get.mockResolvedValue({ data: [{ id: 1, name: 'Favoriti' }] })
-//      const result = await watchlistService.listAll()
-//      expect(mockApi.get).toHaveBeenCalledWith('/watchlists')
-//      expect(result).toHaveLength(1)
-//
-//   2. 'getById salje GET /watchlists/:id'
-//      mockApi.get.mockResolvedValue({ data: { id: 5 } })
-//      await watchlistService.getById(5)
-//      expect(mockApi.get).toHaveBeenCalledWith('/watchlists/5')
-//
-//   3. 'create salje POST /watchlists sa name i description'
-//      const dto = { name: 'Nova', description: 'Opis' }
-//      mockApi.post.mockResolvedValue({ data: { id: 3, ...dto } })
-//      await watchlistService.create(dto)
-//      expect(mockApi.post).toHaveBeenCalledWith('/watchlists', dto)
-//
-//   4. 'rename salje PATCH /watchlists/:id sa novim imenom'
-//      mockApi.patch.mockResolvedValue({ data: { id: 1, name: 'Novo ime' } })
-//      await watchlistService.rename(1, { name: 'Novo ime' })
-//      expect(mockApi.patch).toHaveBeenCalledWith('/watchlists/1', { name: 'Novo ime' })
-//
-//   5. 'remove salje DELETE /watchlists/:id'
-//      mockApi.delete.mockResolvedValue({ data: undefined })
-//      await watchlistService.remove(2)
-//      expect(mockApi.delete).toHaveBeenCalledWith('/watchlists/2')
-//
-//   6. 'listItems salje GET /watchlists/:id/items'
-//      mockApi.get.mockResolvedValue({ data: [] })
-//      await watchlistService.listItems(7)
-//      expect(mockApi.get).toHaveBeenCalledWith('/watchlists/7/items')
-//
-//   7. 'addItem salje POST /watchlists/:id/items sa listingId'
-//      const dto = { listingId: 42 }
-//      mockApi.post.mockResolvedValue({ data: { id: 100, ...dto } })
-//      await watchlistService.addItem(7, dto)
-//      expect(mockApi.post).toHaveBeenCalledWith('/watchlists/7/items', dto)
-//
-//   8. 'removeItem salje DELETE /watchlists/:id/items/:itemId'
-//      mockApi.delete.mockResolvedValue({ data: undefined })
-//      await watchlistService.removeItem(7, 100)
-//      expect(mockApi.delete).toHaveBeenCalledWith('/watchlists/7/items/100')
-//
-//   9. 'moveItem salje POST /watchlists/:id/items/:itemId/move sa targetWatchlistId'
-//      mockApi.post.mockResolvedValue({ data: { id: 100, watchlistId: 9 } })
-//      await watchlistService.moveItem(7, 100, 9)
-//      expect(mockApi.post).toHaveBeenCalledWith('/watchlists/7/items/100/move', { targetWatchlistId: 9 })
-//
-//   10. 'fetchMarketSnapshot salje POST /watchlists/market-snapshot sa nizom listingIds'
-//       mockApi.post.mockResolvedValue({ data: [{ listingId: 1, currentPrice: 150 }] })
-//       await watchlistService.fetchMarketSnapshot([1, 2, 3])
-//       expect(mockApi.post).toHaveBeenCalledWith('/watchlists/market-snapshot', { listingIds: [1, 2, 3] })
-//
-// Konvencija: pratiti postojecu `Savings` feature celinu kao sablon.
-// Spec: Zadaci_Frontend.pdf, FE2.
-// ============================================================
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import api from './api';
+import { watchlistService } from './watchlistService';
+import type { WatchlistDto, WatchlistItemDto } from '../types/watchlist';
 
-import { describe, it } from 'vitest';
+vi.mock('./api');
+const mockedApi = vi.mocked(api);
 
 describe('watchlistService', () => {
-  it.todo('listAll salje GET /watchlists i vraca niz lista');
-  it.todo('getById salje GET /watchlists/:id');
-  it.todo('create salje POST /watchlists sa name i description');
-  it.todo('rename salje PATCH /watchlists/:id sa novim imenom');
-  it.todo('remove salje DELETE /watchlists/:id');
-  it.todo('listItems salje GET /watchlists/:id/items');
-  it.todo('addItem salje POST /watchlists/:id/items sa listingId');
-  it.todo('removeItem salje DELETE /watchlists/:id/items/:itemId');
-  it.todo('moveItem salje POST /watchlists/:id/items/:itemId/move sa targetWatchlistId');
-  it.todo('fetchMarketSnapshot salje POST /watchlists/market-snapshot sa nizom listingIds');
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('listMyWatchlists', () => {
+    it('GET /watchlists/my and returns list', async () => {
+      const lists: WatchlistDto[] = [
+        {
+          id: 1,
+          ownerId: 10,
+          ownerType: 'CLIENT',
+          name: 'Favoriti',
+          createdAt: '2026-05-25T10:00:00Z',
+        },
+      ];
+      mockedApi.get.mockResolvedValue({ data: lists });
+
+      const result = await watchlistService.listMyWatchlists();
+
+      expect(mockedApi.get).toHaveBeenCalledWith('/watchlists/my');
+      expect(result).toEqual(lists);
+    });
+
+    it('propagates errors', async () => {
+      mockedApi.get.mockRejectedValue(new Error('Network error'));
+      await expect(watchlistService.listMyWatchlists()).rejects.toThrow('Network error');
+    });
+  });
+
+  describe('createWatchlist', () => {
+    it('POST /watchlists with name payload', async () => {
+      const created: WatchlistDto = {
+        id: 2,
+        ownerId: 10,
+        ownerType: 'CLIENT',
+        name: 'Tech',
+        createdAt: '2026-05-25T10:00:00Z',
+      };
+      mockedApi.post.mockResolvedValue({ data: created });
+
+      const result = await watchlistService.createWatchlist({ name: 'Tech' });
+
+      expect(mockedApi.post).toHaveBeenCalledWith('/watchlists', { name: 'Tech' });
+      expect(result).toEqual(created);
+    });
+  });
+
+  describe('renameWatchlist', () => {
+    it('PATCH /watchlists/{id} with new name', async () => {
+      const renamed: WatchlistDto = {
+        id: 1,
+        ownerId: 10,
+        ownerType: 'CLIENT',
+        name: 'New name',
+        createdAt: '2026-05-25T10:00:00Z',
+      };
+      mockedApi.patch.mockResolvedValue({ data: renamed });
+
+      const result = await watchlistService.renameWatchlist(1, { name: 'New name' });
+
+      expect(mockedApi.patch).toHaveBeenCalledWith('/watchlists/1', { name: 'New name' });
+      expect(result).toEqual(renamed);
+    });
+  });
+
+  describe('deleteWatchlist', () => {
+    it('DELETE /watchlists/{id}', async () => {
+      mockedApi.delete.mockResolvedValue({ data: undefined });
+
+      await watchlistService.deleteWatchlist(5);
+
+      expect(mockedApi.delete).toHaveBeenCalledWith('/watchlists/5');
+    });
+  });
+
+  describe('listItems', () => {
+    it('GET /watchlists/{id}/items', async () => {
+      const items: WatchlistItemDto[] = [
+        {
+          id: 10,
+          watchlistId: 1,
+          listingId: 100,
+          listingTicker: 'AAPL',
+          listingType: 'STOCK',
+          currentPrice: 180,
+          addedAt: '2026-05-25T10:00:00Z',
+        },
+      ];
+      mockedApi.get.mockResolvedValue({ data: items });
+
+      const result = await watchlistService.listItems(1);
+
+      expect(mockedApi.get).toHaveBeenCalledWith('/watchlists/1/items');
+      expect(result).toEqual(items);
+    });
+  });
+
+  describe('addItem', () => {
+    it('POST /watchlists/{id}/items with listingId', async () => {
+      const item: WatchlistItemDto = {
+        id: 11,
+        watchlistId: 1,
+        listingId: 101,
+        listingTicker: 'MSFT',
+        listingType: 'STOCK',
+        addedAt: '2026-05-25T10:00:00Z',
+      };
+      mockedApi.post.mockResolvedValue({ data: item });
+
+      const result = await watchlistService.addItem(1, { listingId: 101 });
+
+      expect(mockedApi.post).toHaveBeenCalledWith('/watchlists/1/items', { listingId: 101 });
+      expect(result).toEqual(item);
+    });
+
+    it('propagates 409 conflict', async () => {
+      mockedApi.post.mockRejectedValue(new Error('Conflict'));
+      await expect(watchlistService.addItem(1, { listingId: 1 })).rejects.toThrow('Conflict');
+    });
+  });
+
+  describe('removeItem', () => {
+    it('DELETE /watchlists/{id}/items/{itemId}', async () => {
+      mockedApi.delete.mockResolvedValue({ data: undefined });
+
+      await watchlistService.removeItem(1, 10);
+
+      expect(mockedApi.delete).toHaveBeenCalledWith('/watchlists/1/items/10');
+    });
+  });
 });

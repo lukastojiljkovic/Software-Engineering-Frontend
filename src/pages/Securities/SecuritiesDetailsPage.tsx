@@ -19,6 +19,7 @@ import {
   BellRing,
 } from 'lucide-react';
 import PriceAlertDialog from '@/components/pricealert/PriceAlertDialog';
+import AddToWatchlistButton from '@/components/watchlist/AddToWatchlistButton';
 import type { Listing, ListingDailyPrice, OptionChain } from '@/types/celina3';
 import listingService from '@/services/listingService';
 import { toast } from '@/lib/notify';
@@ -374,7 +375,12 @@ export default function SecuritiesDetailsPage() {
               <span className="text-xs ml-1">({isPositive ? '+' : ''}{changePct.toFixed(2)}%)</span>
             </span>
           </div>
-          <div className="mt-3 flex justify-start lg:justify-end">
+          <div className="mt-3 flex justify-start lg:justify-end items-center gap-2 flex-wrap">
+            <AddToWatchlistButton
+              listingId={listing.id}
+              listingTicker={listing.ticker}
+              variant="full"
+            />
             <Button
               variant="outline"
               size="sm"

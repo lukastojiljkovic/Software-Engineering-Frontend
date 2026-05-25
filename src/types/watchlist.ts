@@ -1,51 +1,66 @@
 // ============================================================
-// TODO [FE2 - Watchlist + cenovni alarmi | Developer: Antonije Ilic]
+// FE2 - Watchlist + cenovni alarmi | Developer: Antonije Ilic
 //
 // Tipovi za Watchlist feature: liste pracenja i njihove stavke sa trzisnim podacima.
-//
-// IMPLEMENTIRATI:
-//
-//   WatchlistDto — lista pracenja:
-//     id: number
-//     name: string                  // korisnicki naziv liste
-//     description?: string
-//     createdAt: string             // ISO-8601
-//     updatedAt: string
-//     itemCount: number             // ukupan broj hartija u listi
-//
-//   WatchlistItemDto — jedna stavka u listi (hartija + trzisni podaci):
-//     id: number
-//     watchlistId: number
-//     listingId: number
-//     ticker: string
-//     name: string                  // puno ime hartije
-//     exchange: string              // akronim berze
-//     listingType: string           // 'STOCK' | 'FUTURE' | 'OPTION' | 'FOREX'
-//     currentPrice: number | null
-//     priceChange: number | null    // apsolutna promena u odnosu na prethodni dan
-//     priceChangePct: number | null // % promena
-//     volume: number | null
-//     currency: string
-//     addedAt: string               // ISO-8601
-//
-//   CreateWatchlistRequest — payload za POST /watchlists:
-//     name: string
-//     description?: string
-//
-//   RenameWatchlistRequest — payload za PATCH /watchlists/:id:
-//     name: string
-//
-//   AddToWatchlistRequest — payload za POST /watchlists/:id/items:
-//     listingId: number
-//
-//   WatchlistFilterType — union za filter dropdowns:
-//     'ALL' | 'STOCK' | 'FUTURE' | 'OPTION' | 'FOREX'
-//
-//   WATCHLIST_FILTER_LABELS — Record<WatchlistFilterType, string> mapa srpskih naziva
-//     npr. { ALL: 'Sve', STOCK: 'Akcije', FUTURE: 'Fjucersi', OPTION: 'Opcije', FOREX: 'Valute' }
-//
-// Konvencija: pratiti postojecu `Savings` feature celinu kao sablon.
 // Spec: Zadaci_Frontend.pdf, FE2.
 // ============================================================
 
-export {};
+import type { ListingType } from './celina3';
+
+export type WatchlistOwnerType = 'CLIENT' | 'EMPLOYEE';
+
+/** Jedna lista pracenja (Watchlist) korisnika. */
+export interface WatchlistDto {
+  id: number;
+  ownerId: number;
+  ownerType: WatchlistOwnerType;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt?: string;
+  itemCount?: number;
+}
+
+/** Stavka u listi pracenja (hartija + trzisni podaci). */
+export interface WatchlistItemDto {
+  id: number;
+  watchlistId: number;
+  listingId: number;
+  listingTicker: string;
+  listingType: ListingType | string;
+  listingName?: string;
+  exchange?: string;
+  currentPrice?: number | null;
+  dailyChange?: number | null;
+  dailyChangePercent?: number | null;
+  volume?: number | null;
+  currency?: string;
+  addedAt: string;
+}
+
+/** Payload za POST /watchlists. */
+export interface CreateWatchlistRequest {
+  name: string;
+}
+
+/** Payload za PATCH /watchlists/{id}. */
+export interface RenameWatchlistRequest {
+  name: string;
+}
+
+/** Payload za POST /watchlists/{id}/items. */
+export interface AddWatchlistItemRequest {
+  listingId: number;
+}
+
+/** Union za filter dropdown na WatchlistPage tabeli. */
+export type WatchlistFilterType = 'ALL' | 'STOCK' | 'FUTURES' | 'FOREX' | 'OPTION';
+
+/** Srpske labele za filter dropdown. */
+export const WATCHLIST_FILTER_LABELS: Record<WatchlistFilterType, string> = {
+  ALL: 'Sve',
+  STOCK: 'Akcije',
+  FUTURES: 'Fjucersi',
+  FOREX: 'Valute',
+  OPTION: 'Opcije',
+};
