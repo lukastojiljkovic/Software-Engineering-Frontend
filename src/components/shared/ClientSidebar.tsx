@@ -28,6 +28,10 @@ import {
   Percent,
   MapPin,
   Gamepad2,
+  Bookmark,
+  BellRing,
+  Repeat,
+  ScrollText,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/button';
@@ -43,35 +47,6 @@ interface SidebarItem {
   icon: React.ReactNode;
 }
 
-/*
- * TODO [Razvojni ciklus - novi navigacioni linkovi]
- *
- * Dodati sledece linkove u odgovarajuce sekcije prateCI postojeci SidebarItem obrazac
- * ({ label, path, icon }). Svaki link zahteva import odgovarajuce Lucide ikone.
- *
- * [FE2] "Watchlist" i "Cenovni alarmi" — klijentska/trgovinska sekcija
- *       (dodati u `clientLinks` niz ili u zaseban `tradingLinks` niz za klijente
- *        koji imaju TRADE_STOCKS permisiju, slicno canAccessOtc logiCI):
- *   { label: 'Watchlist',        path: '/watchlist',     icon: <Bookmark ... /> }
- *   { label: 'Cenovni alarmi',   path: '/price-alerts',  icon: <BellRing  ... /> }
- *
- * [FE3] "Trajni nalozi" — trgovinska sekcija (noAgentOnly klijenti i supervizori):
- *   { label: 'Trajni nalozi', path: '/recurring-orders', icon: <Repeat ... /> }
- *
- *   "Audit log" — sekcija za zaposlene (samo supervizor/admin):
- *   Prikazati uslovno: if (isAdmin || isSupervisor)
- *   { label: 'Audit log', path: '/audit-log', icon: <ScrollText ... /> }
- *   Dodati u `employeeLinks` niz pored "Orderi" i "Aktuari".
- *
- * Pristup notifikacijama (FE1) je primarno realizovan kroz zvono u zaglavlju
- * (Header komponenta — vidi TODO u MainLayout.tsx). Opcioni sidebar link:
- *   { label: 'Notifikacije', path: '/notifications', icon: <Bell ... /> }
- *   Moze se dodati u `clientLinks` (ili prikazati za sve role) ukoliko FE lead
- *   odluci da je sidebar link potreban pored zvona u zaglavlju.
- *
- * Napomena: pre dodavanja linkova, odgovarajuce rute moraju biti registrovane
- * u App.tsx (vidi TODO tamo). Redosled linkova u sidebar-u odredjuje FE lead.
- */
 export default function ClientSidebar() {
   const { user, logout, isAdmin, isSupervisor } = useAuth();
   const [open, setOpen] = useState(false);
@@ -131,6 +106,12 @@ export default function ClientSidebar() {
   const clientCanTrade = role === 'CLIENT' && perms.includes('TRADE_STOCKS');
   const canAccessOtc = !isAgent && (isSupervisor || isAdmin || clientCanTrade);
 
+  // TODO_final 2026-05-25: trgovinski feature-i (Watchlist, Cenovni alarmi,
+  // Trajni nalozi/DCA) dostupni su svim koji mogu da trguju — klijenti
+  // (sa TRADE_STOCKS), supervizori i admin. Agenti su iskljuceni po istom
+  // pravilu kao OTC. Reusable: isti `canAccessOtc` semantika vazi.
+  const canAccessTradingFeatures = !isAgent && (isSupervisor || isAdmin || clientCanTrade);
+
   const tradingLinks: SidebarItem[] = useMemo(
     () => {
       const base: SidebarItem[] = [
@@ -138,6 +119,13 @@ export default function ClientSidebar() {
         { label: 'Portfolio', path: '/portfolio', icon: <Briefcase className="h-4 w-4" /> },
         { label: 'Moji orderi', path: '/orders/my', icon: <ShoppingCart className="h-4 w-4" /> },
       ];
+      if (canAccessTradingFeatures) {
+        base.push(
+          { label: 'Watchlist', path: '/watchlist', icon: <Bookmark className="h-4 w-4" /> },
+          { label: 'Cenovni alarmi', path: '/price-alerts', icon: <BellRing className="h-4 w-4" /> },
+          { label: 'Trajni nalozi', path: '/recurring-orders', icon: <Repeat className="h-4 w-4" /> },
+        );
+      }
       if (canAccessOtc) {
         base.push(
           { label: 'OTC trgovina', path: '/otc', icon: <Handshake className="h-4 w-4" /> },
@@ -146,7 +134,7 @@ export default function ClientSidebar() {
       base.push({ label: 'Investicioni fondovi', path: '/funds', icon: <PiggyBank className="h-4 w-4" /> });
       return base;
     },
-    [canAccessOtc]
+    [canAccessOtc, canAccessTradingFeatures]
   );
 
   const employeeLinks: SidebarItem[] = useMemo(
@@ -182,6 +170,7 @@ export default function ClientSidebar() {
           { label: 'Porez', path: '/employee/tax', icon: <Calculator className="h-4 w-4" /> },
           { label: 'Profit Banke', path: '/employee/profit-bank', icon: <Landmark className="h-4 w-4" /> },
           { label: 'Svi depoziti', path: '/admin/savings/deposits', icon: <Vault className="h-4 w-4" /> },
+          { label: 'Audit log', path: '/audit-log', icon: <ScrollText className="h-4 w-4" /> },
           // Napomena: "Kreiraj fond" se pristupa preko /funds stranice (dugme gore desno).
           // Zaseban sidebar link napravio bi koliziju sa postojecim Cypress regex
           // testovima (/novi|dodaj|kreiraj/i) na Admin Employee flow-u.
