@@ -9,6 +9,7 @@ import {
   activateAccountSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  dateOfBirthSchema,
 } from './validationSchemas';
 
 describe('emailSchema', () => {
@@ -62,13 +63,25 @@ describe('passwordSchema', () => {
   });
 });
 
-describe('phoneSchema', () => {
-  it('accepts a valid phone number', () => {
-    expect(phoneSchema.safeParse('+381 64 1234567').success).toBe(true);
+describe('phoneSchema (strict E.164 — TODO_final C1 #1)', () => {
+  it('accepts a valid strict E.164 phone', () => {
+    expect(phoneSchema.safeParse('+381601234567').success).toBe(true);
   });
 
-  it('accepts phone without +', () => {
-    expect(phoneSchema.safeParse('064-1234567').success).toBe(true);
+  it('accepts strict phone without + (digits-only)', () => {
+    expect(phoneSchema.safeParse('0641234567').success).toBe(true);
+  });
+
+  it('accepts maximum 15 digit phone (E.164 cap)', () => {
+    expect(phoneSchema.safeParse('+123456789012345').success).toBe(true);
+  });
+
+  it('rejects phone with spaces', () => {
+    expect(phoneSchema.safeParse('+381 60 1234567').success).toBe(false);
+  });
+
+  it('rejects phone with hyphens', () => {
+    expect(phoneSchema.safeParse('+381-60-1234567').success).toBe(false);
   });
 
   it('rejects empty string', () => {
@@ -76,11 +89,33 @@ describe('phoneSchema', () => {
   });
 
   it('rejects phone with letters', () => {
-    expect(phoneSchema.safeParse('abc123').success).toBe(false);
+    expect(phoneSchema.safeParse('0601234567a').success).toBe(false);
   });
 
   it('rejects too short phone', () => {
     expect(phoneSchema.safeParse('123').success).toBe(false);
+  });
+
+  it('rejects phone over 15 digits', () => {
+    expect(phoneSchema.safeParse('+1234567890123456').success).toBe(false);
+  });
+});
+
+describe('dateOfBirthSchema (TODO_final C1 #1)', () => {
+  it('accepts a past date', () => {
+    expect(dateOfBirthSchema.safeParse('1990-03-15').success).toBe(true);
+  });
+
+  it('rejects future date', () => {
+    expect(dateOfBirthSchema.safeParse('2030-01-01').success).toBe(false);
+  });
+
+  it('rejects empty string', () => {
+    expect(dateOfBirthSchema.safeParse('').success).toBe(false);
+  });
+
+  it('rejects invalid date string', () => {
+    expect(dateOfBirthSchema.safeParse('invalid-date').success).toBe(false);
   });
 });
 

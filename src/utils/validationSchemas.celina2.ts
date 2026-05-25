@@ -1,5 +1,5 @@
 ﻿import { z } from 'zod';
-import { phoneSchema, nameSchema, emailSchema } from './validationSchemas';
+import { phoneSchema, nameSchema, emailSchema, dateOfBirthSchema } from './validationSchemas';
 
 // ============================================================
 // Validacione seme za Banka 2025 - Celina 2: Osnovno poslovanje
@@ -242,7 +242,7 @@ export const editClientSchema = z.object({
   email: emailSchema,
   phoneNumber: phoneSchema,
   address: z.string().min(1, 'Adresa je obavezna'),
-  dateOfBirth: z.string().min(1, 'Datum rodjenja je obavezan'),
+  dateOfBirth: dateOfBirthSchema,
   gender: z.string().min(1, 'Pol je obavezan'),
 });
 export type EditClientFormData = z.infer<typeof editClientSchema>;

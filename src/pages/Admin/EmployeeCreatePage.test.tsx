@@ -93,7 +93,7 @@ describe('EmployeeCreatePage', () => {
     await user.click(screen.getByRole('button', { name: /kreiraj zaposlenog/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/validan broj telefona/i)).toBeInTheDocument();
+      expect(screen.getByText(/Telefon moze sadrzati samo cifre/i)).toBeInTheDocument();
     });
   });
 
