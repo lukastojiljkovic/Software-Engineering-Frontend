@@ -68,11 +68,12 @@ jobs:
         # `eslint-plugin-security` detektuje OWASP-style obrasce: eval(), unsafe regex
         # (ReDoS), child_process spawn sa korisnickim input-om, fs.readFile sa
         # nelitralnim path-om, weak crypto (`crypto.pseudoRandomBytes`), itd.
-        # Pokrecemo samo nase src/ — bez node_modules. continue-on-error za sad
-        # jer ima 33 warnings u minified vendor bundles koje ne mozemo da fix-ujemo.
-        # Svaki novi PR koji uvodi NEW security warning treba da ga adresira.
+        # Pokrecemo samo nase src/ — bez node_modules.
+        # CI-03: `continue-on-error` uklonjen (SAST gate je sad pravi gate).
+        # `--rule` lista koristi ERROR level za "detect-*" pravila koja moraju da
+        # padnu build; `detect-unsafe-regex` je WARN jer regex linting ima cesce
+        # false positive-e (npr. validation patterns sa nestabilnim repetitionom).
         run: npx eslint src/ --no-config-lookup --plugin security --rule "{\"security/detect-eval-with-expression\":\"error\",\"security/detect-non-literal-fs-filename\":\"error\",\"security/detect-non-literal-require\":\"error\",\"security/detect-unsafe-regex\":\"warn\",\"security/detect-pseudoRandomBytes\":\"error\"}"
-        continue-on-error: true
 
   typecheck:
     name: TypeScript

@@ -401,6 +401,10 @@ export interface LoanFilters {
 }
 
 export interface ClientFilters {
+  // FIX FE-BANK-01: BE od 14.05 podrzava jedinstveni `search` parametar koji
+  // OR-uje firstName/lastName/email/phone. Stari triplet ostavljen radi
+  // backwards-compat sa drugim consumer-ima koji jos ne koriste search.
+  search?: string;
   firstName?: string;
   lastName?: string;
   email?: string;

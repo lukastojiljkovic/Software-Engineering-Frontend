@@ -13,9 +13,16 @@ function mapClientFromBE(data: Record<string, unknown>): Client {
 export const clientService = {
   getAll: async (filters?: ClientFilters): Promise<PaginatedResponse<Client>> => {
     const params = new URLSearchParams();
-    if (filters?.firstName) params.append('firstName', filters.firstName);
-    if (filters?.lastName) params.append('lastName', filters.lastName);
-    if (filters?.email) params.append('email', filters.email);
+    // FIX FE-BANK-01: ako consumer salje unified `search`, koristimo ga
+    // (BE OR-uje preko firstName/lastName/email/phone). Inace fallback na
+    // stari triplet za backwards-compat.
+    if (filters?.search) {
+      params.append('search', filters.search);
+    } else {
+      if (filters?.firstName) params.append('firstName', filters.firstName);
+      if (filters?.lastName) params.append('lastName', filters.lastName);
+      if (filters?.email) params.append('email', filters.email);
+    }
     if (filters?.page !== undefined) params.append('page', String(filters.page));
     if (filters?.limit !== undefined) params.append('limit', String(filters.limit));
 

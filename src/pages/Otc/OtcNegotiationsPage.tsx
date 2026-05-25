@@ -16,13 +16,22 @@ import {
 } from '@/components/ui/table';
 import { asArray, formatAmount, getErrorMessage, getPreferredAccount } from '@/utils/formatters';
 import { computeOfferDeviation } from './otcOfferUtils';
+import { createIsMeMatcher } from './otcUtils';
 import OtcSourceFilterChip, { type OtcSource } from '@/components/otc/OtcSourceFilterChip';
 import OtcSubHero from '@/components/otc/OtcSubHero';
 import OtcInterBankOffersTab from './OtcInterBankOffersTab';
 
+// FIX FE-OTC-05: kljuc za Discord-style "neprocitano" merenje za intra-bank
+// pregovore. Inter-bank tab koristi isti kljuc (`otc:lastEntrance`) tako da
+// jedan vremenski snapshot pokriva oba kanala (paritet sa starim ponasanjem
+// pre cleanup-a 24.05).
+const LAST_ENTRANCE_KEY = 'otc:lastEntrance';
+
 export default function OtcNegotiationsPage() {
   const { user, isAdmin, isAgent, isSupervisor } = useAuth();
   const isEmployee = isAdmin || isAgent || isSupervisor;
+  // FIX FE-OTC-03: shared isMe matcher (JWT id + normalizovano ime fallback).
+  const isMe = useMemo(() => createIsMeMatcher(user), [user]);
   const [source, setSource] = useState<OtcSource>('all');
   const [offers, setOffers] = useState<OtcOffer[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -30,6 +39,20 @@ export default function OtcNegotiationsPage() {
   const [busyOfferId, setBusyOfferId] = useState<number | null>(null);
   const [openedOfferId, setOpenedOfferId] = useState<number | null>(null);
   const [counterFormByOfferId, setCounterFormByOfferId] = useState<Record<number, CounterOtcOfferRequest>>({});
+
+  // FIX FE-OTC-05: capture timestamp pre nego sto user vidi listu (Discord-style
+  // unread). Cuvamo "snapshot at mount" izvan localStorage-a da ne smetamo
+  // inter-bank tab parent-u (`OtcInterBankOffersTab` koji cita isti kljuc).
+  const [unreadBaselineTs] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    try {
+      const raw = window.localStorage.getItem(LAST_ENTRANCE_KEY);
+      const parsed = raw ? Number(raw) : 0;
+      return Number.isFinite(parsed) ? parsed : 0;
+    } catch {
+      return 0;
+    }
+  });
 
   const reloadAccounts = async () => {
     try {
@@ -70,7 +93,8 @@ export default function OtcNegotiationsPage() {
     try {
       // Fix iz vece-2: ako trenutni korisnik nije kupac (npr seller koji prihvata
       // counter-offer), ne saljemo accountId — BE auto-resolve buyer-ov racun.
-      const currentIsBuyer = user?.id === offer.buyerId;
+      // FIX FE-OTC-03: koristimo shared isMe (id + ime fallback).
+      const currentIsBuyer = isMe(offer.buyerId, offer.buyerName);
       let buyerAccountId: number | undefined;
       if (currentIsBuyer) {
         const preferred = getPreferredAccount(accounts, offer.listingCurrency);
@@ -145,8 +169,37 @@ export default function OtcNegotiationsPage() {
   };
 
   const myTurnCount = activeOffers.filter((o) => o.myTurn).length;
-  const asBuyerCount = activeOffers.filter((o) => user?.id === o.buyerId).length;
-  const asSellerCount = activeOffers.filter((o) => user?.id === o.sellerId).length;
+  const asBuyerCount = activeOffers.filter((o) => isMe(o.buyerId, o.buyerName)).length;
+  const asSellerCount = activeOffers.filter((o) => isMe(o.sellerId, o.sellerName)).length;
+
+  // FIX FE-OTC-05: count "neprocitano" — aktivne ponude koje je druga strana
+  // izmenila posle poslednjeg ulaska, i sad cekaju nas. Heuristika: lastModifiedById
+  // nije nas, ts > unreadBaselineTs (capture-d na mount-u). Paritet sa
+  // OtcInterBankOffersTab pattern-om.
+  const unreadCount = useMemo(() => {
+    if (loading) return 0;
+    return activeOffers.filter((o) => {
+      if (isMe(o.lastModifiedById, '')) return false;
+      const ts = Date.parse(o.lastModifiedAt);
+      return Number.isFinite(ts) && ts > unreadBaselineTs;
+    }).length;
+  }, [activeOffers, loading, isMe, unreadBaselineTs]);
+
+  // FIX FE-OTC-05: posle prvog render-a azuriraj `otc:lastEntrance` (sa malim
+  // delay-em da unread baseline iznad pokrije prikazan red, kao Discord/Slack).
+  // Inter-bank tab cita isti kljuc — ovde sinhronizujemo oba kanala.
+  useEffect(() => {
+    if (loading) return;
+    if (typeof window === 'undefined') return;
+    const handle = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(LAST_ENTRANCE_KEY, String(Date.now()));
+      } catch {
+        // localStorage moze biti onemogucen u nekim iframe context-ima
+      }
+    }, 1000);
+    return () => window.clearTimeout(handle);
+  }, [loading]);
 
   return (
     <div className="container mx-auto py-6 space-y-6 animate-fade-up">
@@ -159,6 +212,7 @@ export default function OtcNegotiationsPage() {
         kpis={source === 'inter' ? undefined : [
           { label: 'Aktivnih', value: String(activeOffers.length) },
           { label: 'Tvoj red', value: String(myTurnCount), tone: myTurnCount > 0 ? 'warning' : 'default' },
+          { label: 'Neprocitano', value: String(unreadCount), tone: unreadCount > 0 ? 'warning' : 'default' },
           { label: 'Kao kupac', value: String(asBuyerCount) },
           { label: 'Kao prodavac', value: String(asSellerCount) },
         ]}
@@ -213,13 +267,13 @@ export default function OtcNegotiationsPage() {
                           <div className="text-sm space-y-0.5">
                             <div className="flex items-center gap-1.5">
                               <span>Kupac: {offer.buyerName}</span>
-                              {user?.id === offer.buyerId && (
+                              {isMe(offer.buyerId, offer.buyerName) && (
                                 <Badge variant="info" className="text-[10px] px-1 py-0 h-4">VI</Badge>
                               )}
                             </div>
                             <div className="text-muted-foreground flex items-center gap-1.5">
                               <span>Prodavac: {offer.sellerName}</span>
-                              {user?.id === offer.sellerId && (
+                              {isMe(offer.sellerId, offer.sellerName) && (
                                 <Badge variant="info" className="text-[10px] px-1 py-0 h-4">VI</Badge>
                               )}
                             </div>

@@ -117,6 +117,38 @@ describe('dateOfBirthSchema', () => {
   it('rejects invalid date string', () => {
     expect(dateOfBirthSchema.safeParse('invalid-date').success).toBe(false);
   });
+
+  // FE-SHR-03: UTC normalizacija — today rejected (mora biti u proslosti),
+  // yesterday accepted, tomorrow rejected, bez obzira na lokalnu TZ.
+  it('rejects today (datum rodjenja mora biti u proslosti)', () => {
+    const now = new Date();
+    const todayIso = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+    const result = dateOfBirthSchema.safeParse(todayIso);
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts yesterday (strict less-than past)', () => {
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const iso = `${yesterday.getUTCFullYear()}-${String(yesterday.getUTCMonth() + 1).padStart(2, '0')}-${String(yesterday.getUTCDate()).padStart(2, '0')}`;
+    const result = dateOfBirthSchema.safeParse(iso);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects tomorrow (future even by one day)', () => {
+    const tomorrow = new Date();
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const iso = `${tomorrow.getUTCFullYear()}-${String(tomorrow.getUTCMonth() + 1).padStart(2, '0')}-${String(tomorrow.getUTCDate()).padStart(2, '0')}`;
+    expect(dateOfBirthSchema.safeParse(iso).success).toBe(false);
+  });
+
+  it('rejects malformed ISO with too few parts', () => {
+    expect(dateOfBirthSchema.safeParse('1990-03').success).toBe(false);
+  });
+
+  it('rejects malformed ISO with NaN parts', () => {
+    expect(dateOfBirthSchema.safeParse('abcd-01-01').success).toBe(false);
+  });
 });
 
 describe('nameSchema', () => {

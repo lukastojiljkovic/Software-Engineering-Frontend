@@ -1,10 +1,12 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { AuthUser, LoginRequest } from '../types';
 import { authService } from '../services/authService';
 import { Permission } from '../types';
 import { decodeJwt } from '../utils/jwt';
 import { employeeService } from '../services/employeeService';
 import { clientService } from '../services/clientService';
+import { AUTH_UNAUTHORIZED_EVENT } from '../services/authEvents';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -20,128 +22,204 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// FE-AUTH-02: provera JWT exp-a pre rehydratacije iz sessionStorage. Bez ovoga,
+// cached `sessionStorage.user` se "ucitava" iako je token istekao — user
+// izgleda autentifikovan dok prvi API poziv ne vrati 401, sto izaziva
+// neocekivane redirect-e i flash polu-renderovanih UI stanja.
+function isAccessTokenStale(token: string): boolean {
+  const payload = decodeJwt(token);
+  if (!payload || typeof payload.exp !== 'number') {
+    // Nemamo validan payload ili exp claim — tretiraj kao stale (safer default).
+    return true;
+  }
+  return payload.exp * 1000 <= Date.now();
+}
+
 function getInitialUser(): AuthUser | null {
   const token = sessionStorage.getItem('accessToken');
   const storedUser = sessionStorage.getItem('user');
-  if (token && storedUser) {
-    try {
-      return JSON.parse(storedUser) as AuthUser;
-    } catch {
-      sessionStorage.clear();
-    }
+  if (!token || !storedUser) {
+    return null;
   }
-  return null;
+  // FE-AUTH-02: ako JWT exp je u proslosti, ocisti sesiju i ne ucitavaj user-a.
+  if (isAccessTokenStale(token)) {
+    sessionStorage.clear();
+    return null;
+  }
+  try {
+    return JSON.parse(storedUser) as AuthUser;
+  } catch {
+    sessionStorage.clear();
+    return null;
+  }
+}
+
+// FE-AUTH-01: pomocnica za fetch permisija zaposlenog. Vraca strukturu
+// ({permissions, userId, firstName, lastName}) — immutable izvor istine
+// koji se kombinuje sa ADMIN baseline-om u login(). Ranija inline mutacija
+// `permissions.push(...)` + reassign preko `await` boundary brisala je
+// prethodne push-eve (race), pa je sad razdvojeno: prvo izracunaj sve
+// async izvore, pa kompozuj kao immutable lista.
+async function fetchEmployeePermissions(email: string): Promise<{
+  permissions: Permission[];
+  userId: number;
+  firstName?: string;
+  lastName?: string;
+}> {
+  try {
+    const employeesResponse = await employeeService.getAll({ email, page: 0, limit: 1 });
+    const employees = employeesResponse.content;
+    if (employees.length > 0) {
+      const emp = employees[0];
+      return {
+        permissions: (emp.permissions ?? []) as Permission[],
+        userId: emp.id,
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+      };
+    }
+  } catch {
+    // Fail-safe: ako BE puca, vrati prazne permisije — caller dodaje ADMIN
+    // baseline ako je ADMIN role.
+  }
+  return { permissions: [], userId: 0 };
+}
+
+async function fetchClientInfo(email: string): Promise<{
+  permissions: Permission[];
+  userId: number;
+  firstName?: string;
+  lastName?: string;
+}> {
+  // T4A-017: ako BE javi canTradeStocks=false, klijent NE dobija TRADE_STOCKS.
+  // Default je true radi backwards-compat (stari klijenti bez polja).
+  try {
+    const clientsResponse = await clientService.getAll({ email, page: 0, limit: 1 });
+    const clients = clientsResponse.content;
+    if (clients.length > 0) {
+      const cli = clients[0];
+      const canTrade = (cli as unknown as { canTradeStocks?: boolean }).canTradeStocks;
+      return {
+        permissions: canTrade !== false ? [Permission.TRADE_STOCKS] : [],
+        userId: cli.id,
+        firstName: cli.firstName,
+        lastName: cli.lastName,
+      };
+    }
+    // Nismo nasli klijenta — ostavi userId=0 ali daj TRADE_STOCKS default (backwards-compat).
+    return { permissions: [Permission.TRADE_STOCKS], userId: 0 };
+  } catch {
+    // Lookup nije obavezan za login flow — ako padne, dajemo TRADE_STOCKS po default-u.
+    return { permissions: [Permission.TRADE_STOCKS], userId: 0 };
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(getInitialUser);
-  const [isLoading] = useState(false);
+  // FE-AUTH-03: dodaje setter koji se trigger-uje pri async login/logout-u,
+  // pa ProtectedRoute splash branch radi (ranije: `const [isLoading]` bez
+  // setter-a = dead state).
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  // FE-SHR-01: api.ts emit-uje `auth:unauthorized` event kad refresh padne.
+  // AuthProvider hvata + radi clean logout + SPA navigate. Ranije:
+  // `window.location.href = '/login'` u api.ts → full page reload, wipe
+  // React state, breaks Cypress + AuthLoadingSplash.
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      sessionStorage.clear();
+      setUser(null);
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        navigate('/login', { replace: true });
+      }
+    };
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+  }, [navigate]);
 
   const login = async (data: LoginRequest) => {
-    const response = await authService.login(data);
+    setIsLoading(true);
+    try {
+      const response = await authService.login(data);
 
-    sessionStorage.setItem('accessToken', response.accessToken);
-    sessionStorage.setItem('refreshToken', response.refreshToken);
+      sessionStorage.setItem('accessToken', response.accessToken);
+      sessionStorage.setItem('refreshToken', response.refreshToken);
 
-    const payload = decodeJwt(response.accessToken);
-    if (!payload) {
-      throw new Error('Neispravan token');
-    }
-
-    const emailName = payload.sub.split('@')[0];
-    const nameParts = emailName.split('.');
-    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
-    let permissions: Permission[] = [];
-    let userId = 0;
-    let firstName = nameParts[0] ? capitalize(nameParts[0]) : '';
-    let lastName = nameParts[1] ? capitalize(nameParts[1]) : '';
-
-    // For ADMIN role, always include ADMIN permission
-    if (payload.role === 'ADMIN') {
-      permissions.push(Permission.ADMIN);
-    }
-
-    // For employees (ADMIN or EMPLOYEE role), fetch real permissions from backend
-    if (payload.role === 'ADMIN' || payload.role === 'EMPLOYEE') {
-      try {
-        const employeesResponse = await employeeService.getAll({ email: payload.sub, page: 0, limit: 1 });
-        const employees = employeesResponse.content;
-        if (employees.length > 0) {
-          const emp = employees[0];
-          permissions = (emp.permissions ?? []) as Permission[];
-          userId = emp.id;
-          firstName = emp.firstName || firstName;
-          lastName = emp.lastName || lastName;
-          // Admins always have ADMIN permission even if not in backend list
-          if (payload.role === 'ADMIN' && !permissions.includes(Permission.ADMIN)) {
-            permissions.push(Permission.ADMIN);
-          }
-        }
-      } catch {
-        // If fetching fails, fallback: only ADMIN role gets ADMIN permission
-        if (payload.role === 'ADMIN') {
-          permissions = [Permission.ADMIN];
-        }
+      const payload = decodeJwt(response.accessToken);
+      if (!payload) {
+        throw new Error('Neispravan token');
       }
-    } else if (payload.role === 'CLIENT') {
-      // BuyerId/sellerId u OTC ugovorima/pregovorima poredi se sa user.id,
-      // pa klijentu moramo razresiti pravi id (JWT nema id claim).
-      try {
-        const clientsResponse = await clientService.getAll({ email: payload.sub, page: 0, limit: 1 });
-        const clients = clientsResponse.content;
-        if (clients.length > 0) {
-          const cli = clients[0];
-          userId = cli.id;
-          firstName = cli.firstName || firstName;
-          lastName = cli.lastName || lastName;
-          // T4A-017: ako BE javi canTradeStocks, dodaj TRADE_STOCKS u permissions.
-          // Stari klijenti (bez polja) tretiraju se kao true radi backwards-compat.
-          const canTrade = (cli as unknown as { canTradeStocks?: boolean }).canTradeStocks;
-          if (canTrade !== false) {
-            permissions.push(Permission.TRADE_STOCKS);
-          }
-        } else {
-          // Ako nismo uspeli da resolve-ujemo klijenta, ostavi TRADE_STOCKS (default true)
-          permissions.push(Permission.TRADE_STOCKS);
-        }
-      } catch {
-        // Lookup nije obavezan za login flow — ako padne, ostavljamo userId=0,
-        // a OTC akcije koje zavise od identiteta će biti sakrivene (fail-safe).
-        // TRADE_STOCKS dajemo po default-u kako ne bi razbili postojeci flow.
-        permissions.push(Permission.TRADE_STOCKS);
+
+      const emailName = payload.sub.split('@')[0];
+      const nameParts = emailName.split('.');
+      const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+      const fallbackFirstName = nameParts[0] ? capitalize(nameParts[0]) : '';
+      const fallbackLastName = nameParts[1] ? capitalize(nameParts[1]) : '';
+
+      // FE-AUTH-01: immutable construction. Skupimo sve izvore async-no,
+      // pa kompozujemo finalnu listu sa `new Set` (dedup). Nema mutiranja
+      // preko `await` boundary.
+      const adminBaseline: Permission[] = payload.role === 'ADMIN' ? [Permission.ADMIN] : [];
+
+      let fetchedPerms: Permission[] = [];
+      let userId = 0;
+      let firstName = fallbackFirstName;
+      let lastName = fallbackLastName;
+
+      if (payload.role === 'ADMIN' || payload.role === 'EMPLOYEE') {
+        const empResult = await fetchEmployeePermissions(payload.sub);
+        fetchedPerms = empResult.permissions;
+        userId = empResult.userId;
+        if (empResult.firstName) firstName = empResult.firstName;
+        if (empResult.lastName) lastName = empResult.lastName;
+      } else if (payload.role === 'CLIENT') {
+        const cliResult = await fetchClientInfo(payload.sub);
+        fetchedPerms = cliResult.permissions;
+        userId = cliResult.userId;
+        if (cliResult.firstName) firstName = cliResult.firstName;
+        if (cliResult.lastName) lastName = cliResult.lastName;
       }
+
+      const permissions: Permission[] = Array.from(new Set([...adminBaseline, ...fetchedPerms]));
+
+      const authUser: AuthUser = {
+        id: userId,
+        email: payload.sub,
+        username: emailName,
+        firstName,
+        lastName,
+        role: payload.role,
+        permissions,
+      };
+
+      sessionStorage.setItem('user', JSON.stringify(authUser));
+      setUser(authUser);
+    } finally {
+      setIsLoading(false);
     }
-
-    const authUser: AuthUser = {
-      id: userId,
-      email: payload.sub,
-      username: emailName,
-      firstName,
-      lastName,
-      role: payload.role,
-      permissions,
-    };
-
-    sessionStorage.setItem('user', JSON.stringify(authUser));
-    setUser(authUser);
   };
 
   const logout = async () => {
-    // Opc.1 — POST /auth/logout pre lokalnog clean-up-a, da BE blacklist-uje
-    // JWT (Caffeine 20min TTL). Best-effort: ako BE puca, ipak cisti session.
-    // Axios interceptor automatski dodaje Bearer header, pa BE zna koji token
-    // se blacklist-uje.
-    if (sessionStorage.getItem('accessToken')) {
-      try {
-        await authService.logout();
-      } catch {
-        // BE moze biti unreachable, isteklim tokenom, etc. Lokalna sesija ide
-        // u cleanup nezavisno — bezbednost je defense-in-depth.
+    setIsLoading(true);
+    try {
+      // Opc.1 — POST /auth/logout pre lokalnog clean-up-a, da BE blacklist-uje
+      // JWT (Caffeine 20min TTL). Best-effort: ako BE puca, ipak cisti session.
+      // Axios interceptor automatski dodaje Bearer header, pa BE zna koji token
+      // se blacklist-uje.
+      if (sessionStorage.getItem('accessToken')) {
+        try {
+          await authService.logout();
+        } catch {
+          // BE moze biti unreachable, isteklim tokenom, etc. Lokalna sesija ide
+          // u cleanup nezavisno — bezbednost je defense-in-depth.
+        }
       }
+      sessionStorage.clear();
+      setUser(null);
+    } finally {
+      setIsLoading(false);
     }
-    sessionStorage.clear();
-    setUser(null);
   };
 
   const hasPermission = (permission: Permission) => {

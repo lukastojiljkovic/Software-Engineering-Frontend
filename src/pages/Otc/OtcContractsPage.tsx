@@ -17,6 +17,7 @@ import { OTC_CONTRACT_STATUS_LABELS as CONTRACT_STATUS_LABEL } from '@/utils/otc
 import OtcSourceFilterChip, { type OtcSource } from '@/components/otc/OtcSourceFilterChip';
 import OtcSubHero from '@/components/otc/OtcSubHero';
 import OtcInterBankContractsTab from './OtcInterBankContractsTab';
+import { createIsMeMatcher } from './otcUtils';
 
 // T4A-020 fix: ujednacavanje naziva izmedju filter dropdown-a i statusnih badge-ova.
 // Pre fix-a filter je koristio engleske enum vrednosti, dok su badge-ovi prikazivali
@@ -37,21 +38,13 @@ const statusBadgeVariant = (status: string): 'success' | 'secondary' | 'destruct
   return 'destructive';
 };
 
-const normalizeName = (s: string | undefined) =>
-  // NFD razbija "ć" → "c" + U+0301 i sl., pa skidamo sve combining diacritice (U+0300–U+036F).
-  (s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
-
 export default function OtcContractsPage() {
   const { user, isAdmin, isAgent, isSupervisor } = useAuth();
   const isEmployee = isAdmin || isAgent || isSupervisor;
-  // Klijent JWT nema id claim, a clientService.getAll je cesto 403 za CLIENT-a,
-  // pa se na user.id ne mozemo osloniti. BE vec filtrira /otc/contracts na "moje",
-  // pa unutar tog skupa identitet razresavamo i preko normalizovanog imena.
-  const myFullName = normalizeName(`${user?.firstName ?? ''} ${user?.lastName ?? ''}`);
-  const isMe = (partyId: number, partyName: string) =>
-    (user?.id ?? 0) > 0 && user?.id === partyId
-      ? true
-      : myFullName.length > 0 && normalizeName(partyName) === myFullName;
+  // FIX FE-OTC-03: shared helper (createIsMeMatcher) izmestamo u otcUtils.ts
+  // da OtcNegotiationsPage moze da koristi isti pattern. Klijent JWT cesto
+  // nema pouzdan id pa se uz id-poredjenje radi i normalizovano ime.
+  const isMe = useMemo(() => createIsMeMatcher(user), [user]);
   const [source, setSource] = useState<OtcSource>('all');
   const [statusFilter, setStatusFilter] = useState<OtcContractStatus | 'ALL'>('ALL');
   const [contracts, setContracts] = useState<OtcContract[]>([]);

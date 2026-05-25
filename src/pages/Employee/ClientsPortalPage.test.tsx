@@ -112,7 +112,7 @@ describe('ClientsPortalPage', () => {
     });
   });
 
-  it('searches clients with debounce', async () => {
+  it('searches clients with unified search parameter (FE-BANK-01)', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ClientsPortalPage />);
 
@@ -123,12 +123,21 @@ describe('ClientsPortalPage', () => {
     await user.type(screen.getByPlaceholderText(/Pretrazite klijente po imenu/i), 'Marko');
 
     await waitFor(() => {
+      // FIX FE-BANK-01: jedinstveni `search` param (BE OR-uje firstName/
+      // lastName/email/phone), ne vise triplikati firstName=X,lastName=X,email=X.
       expect(mockGetAll).toHaveBeenCalledWith(
         expect.objectContaining({
-          firstName: 'Marko',
+          search: 'Marko',
         })
       );
     });
+    // Backwards-compat: FE ne salje stara triplet polja kad koristi unified search.
+    const lastCallArgs = mockGetAll.mock.calls[mockGetAll.mock.calls.length - 1]?.[0] as
+      | Record<string, unknown>
+      | undefined;
+    expect(lastCallArgs?.firstName).toBeUndefined();
+    expect(lastCallArgs?.lastName).toBeUndefined();
+    expect(lastCallArgs?.email).toBeUndefined();
   });
 
   it('renders Novi klijent button', async () => {

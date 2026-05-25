@@ -89,23 +89,25 @@ describe('api module', () => {
       expect(responseInterceptorFulfilled(response)).toEqual(response);
     });
 
-    it('redirects to login on 401 with no refresh token', async () => {
+    it('emits AUTH_UNAUTHORIZED_EVENT on 401 with no refresh token (FE-SHR-01)', async () => {
+      // Posle FE-SHR-01 (25.05.2026), api.ts vise NE radi
+      // window.location.href = '/login' (full reload je rusio SPA + Cypress);
+      // umesto toga emit-uje 'auth:unauthorized' custom event koji AuthProvider
+      // hvata + radi navigate('/login') sa cleanup-om.
       sessionStorage.clear();
-      const originalHref = window.location.href;
 
-      // Mock window.location
-      Object.defineProperty(window, 'location', {
-        writable: true,
-        value: { href: originalHref },
-      });
+      const listener = vi.fn();
+      window.addEventListener('auth:unauthorized', listener);
 
       const error = {
-        config: {},
+        config: { url: '/orders' },
         response: { status: 401 },
       };
 
-      await expect(responseInterceptorRejected(error)).rejects.toEqual(error);
-      expect(window.location.href).toBe('/login');
+      await expect(responseInterceptorRejected(error)).rejects.toBeDefined();
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      window.removeEventListener('auth:unauthorized', listener);
     });
 
     it('attempts token refresh on 401 with refresh token', async () => {

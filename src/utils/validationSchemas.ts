@@ -35,18 +35,30 @@ export const phoneSchema = z
   );
 
 // dateOfBirth ne sme biti u buducnosti — spec Celina 1: datum rodjenja je
-// istorijski podatak.
+// istorijski podatak. UTC normalizacija (FE-SHR-03 fix 25.05.2026):
+// `<input type="date">` daje ISO "YYYY-MM-DD" koji `new Date(...)` parsira
+// kao 00:00 UTC. `new Date()` je lokalno vreme. U pozitivnim TZ-ovima
+// (npr. Belgrade +02:00), today je rejected jer 00:00 UTC < trenutno;
+// u negativnim TZ-ovima sutra moze biti accepted. Resenje: obe strane
+// normalizovati na UTC midnight + strict "<" da today bude rejected
+// (datum rodjenja MORA biti u proslosti).
 export const dateOfBirthSchema = z
   .string()
   .min(1, 'Datum rodjenja je obavezan')
   .refine((val) => {
-    const d = new Date(val);
-    return !Number.isNaN(d.getTime());
+    const parts = val.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return false;
+    const [y, m, d] = parts;
+    const inputUtc = Date.UTC(y, m - 1, d);
+    return !Number.isNaN(inputUtc);
   }, 'Unesite validan datum')
   .refine((val) => {
-    const d = new Date(val);
-    return d < new Date();
-  }, 'Datum rodjenja ne sme biti u buducnosti');
+    const [y, m, d] = val.split('-').map(Number);
+    const inputUtc = Date.UTC(y, m - 1, d);
+    const now = new Date();
+    const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    return inputUtc < todayUtc; // strict: today is rejected (mora biti u proslosti)
+  }, 'Datum rodjenja mora biti u proslosti');
 
 export const nameSchema = z
   .string()

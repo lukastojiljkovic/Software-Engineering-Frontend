@@ -220,8 +220,12 @@ export default function OtcDiscoveryPage() {
                               <Button
                                 size="sm"
                                 variant={isOpen ? 'secondary' : 'default'}
-                                // T4A-012: disable sve trigger button-e dok je u toku jedna submisija
-                                disabled={anySubmittingOther}
+                                // T4A-012 + FIX FE-OTC-01: disable trigger dok je u toku
+                                // submisija na bilo kom redu (anySubmittingOther) ILI na
+                                // sopstvenom redu (isSubmitting). Bez `isSubmitting`,
+                                // korisnik moze kliknuti "Zatvori" mid-submit i izgubiti
+                                // submit feedback.
+                                disabled={anySubmittingOther || isSubmitting}
                                 onClick={() =>
                                   isOpen ? setOpenedKey(null) : openForListing(listing)
                                 }

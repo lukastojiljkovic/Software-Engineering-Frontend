@@ -117,10 +117,11 @@ export default function ClientsPortalPage() {
   }, [id]);
 
   const filters = useMemo<ClientFilters>(
+    // FIX FE-BANK-01: koristi unified `search` (BE od 14.05) umesto triplikata
+    // identicnih AND-ovanih parametara koji je davao prazne rezultate kad
+    // korisnik unese npr. samo prezime. Phone-fragment search sad takodje radi.
     () => ({
-      firstName: search || undefined,
-      lastName: search || undefined,
-      email: search || undefined,
+      search: search || undefined,
       page,
       limit: PAGE_SIZE,
     }),

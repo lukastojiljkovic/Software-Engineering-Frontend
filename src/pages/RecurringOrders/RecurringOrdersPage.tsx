@@ -131,6 +131,11 @@ export default function RecurringOrdersPage() {
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
+    // FIX FE-TRD-02: `onChange` mode tako da `formState.isValid` reactive odgovara
+    // na trenutne vrednosti polja (Zod schema zahteva listingId/accountId/value
+    // positive). Bez ovog mode-a isValid se osvezavja tek na submit, pa dugme
+    // ostaje "klikatelno" za invalid form-u.
+    mode: 'onChange',
     defaultValues: {
       direction: 'BUY',
       mode: 'BYAMOUNT',
@@ -551,7 +556,11 @@ export default function RecurringOrdersPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={submitting}
+              // FIX FE-TRD-02: disable submit kad form nije validan (Zod schema
+              // zahteva pozitivne listingId/accountId/value). Bez ovog dugme bi
+              // bilo klikatelno sa listingId=0 (placeholder iz onClearListing),
+              // sto pravi BE 400 round-trip.
+              disabled={submitting || !form.formState.isValid}
               data-testid="recurring-submit"
             >
               {submitting ? 'Kreiram...' : 'Kreiraj trajni nalog'}

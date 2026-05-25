@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthProvider, useAuth } from '../context/AuthContext';
+import { AUTH_UNAUTHORIZED_EVENT } from '../services/authEvents';
 import { Permission } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -30,9 +31,28 @@ vi.mock('../services/employeeService', () => ({
   },
 }));
 
+// Mock clientService — CLIENT role lookup (T4A-017 canTradeStocks)
+vi.mock('../services/clientService', () => ({
+  clientService: {
+    getAll: vi.fn().mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 10 }),
+  },
+}));
+
+// react-router-dom mock: AuthProvider sada koristi useNavigate (FE-SHR-01).
+// U test-u nemamo BrowserRouter wrapper, pa mock-ujemo useNavigate da vraca stub.
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 import { authService } from '../services/authService';
 import { decodeJwt } from '../utils/jwt';
 import { employeeService } from '../services/employeeService';
+import { clientService } from '../services/clientService';
 
 // ---------------------------------------------------------------------------
 // Helper: renders a consumer that exposes context values via data-testid
@@ -63,6 +83,15 @@ describe('AuthContext', () => {
   beforeEach(() => {
     sessionStorage.clear();
     vi.clearAllMocks();
+    // FE-AUTH-02 default mount: decodeJwt vraca validan future-exp payload.
+    // Pojedinacni testovi override-uju (npr. expired, null, ...).
+    vi.mocked(decodeJwt).mockReturnValue({
+      sub: 'default@banka.rs',
+      role: 'ADMIN',
+      active: true,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iat: Math.floor(Date.now() / 1000),
+    });
   });
 
   it('throws if useAuth is called outside AuthProvider', () => {
@@ -341,5 +370,400 @@ describe('AuthContext', () => {
     );
 
     expect(screen.getByTestId('hasAdmin').textContent).toBe('true');
+  });
+
+  // ---------------------------------------------------------------------------
+  // FE-AUTH-02: JWT exp enforced on mount
+  // ---------------------------------------------------------------------------
+
+  it('clears session on mount when access token is stale (exp in past)', () => {
+    // decodeJwt cita iz token-a. Mockujemo decode da vrati istekli exp.
+    vi.mocked(decodeJwt).mockReturnValue({
+      sub: 'stale@banka.rs',
+      role: 'ADMIN',
+      active: true,
+      exp: Math.floor(Date.now() / 1000) - 60, // 60s u proslosti
+      iat: Math.floor(Date.now() / 1000) - 1000,
+    });
+    sessionStorage.setItem('accessToken', 'stale-token');
+    sessionStorage.setItem('refreshToken', 'stale-refresh');
+    sessionStorage.setItem('user', JSON.stringify({ id: 1, email: 'stale@banka.rs', role: 'ADMIN', permissions: [] }));
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    );
+
+    expect(screen.getByTestId('authenticated').textContent).toBe('false');
+    expect(sessionStorage.getItem('accessToken')).toBeNull();
+    expect(sessionStorage.getItem('user')).toBeNull();
+  });
+
+  it('keeps session on mount when access token has valid exp in future', () => {
+    vi.mocked(decodeJwt).mockReturnValue({
+      sub: 'valid@banka.rs',
+      role: 'ADMIN',
+      active: true,
+      exp: Math.floor(Date.now() / 1000) + 3600, // 1h u buducnosti
+      iat: Math.floor(Date.now() / 1000),
+    });
+    const storedUser = {
+      id: 1,
+      email: 'valid@banka.rs',
+      username: 'valid',
+      firstName: 'V',
+      lastName: 'U',
+      role: 'ADMIN',
+      permissions: [Permission.ADMIN],
+    };
+    sessionStorage.setItem('accessToken', 'fresh-token');
+    sessionStorage.setItem('user', JSON.stringify(storedUser));
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    );
+
+    expect(screen.getByTestId('authenticated').textContent).toBe('true');
+    expect(screen.getByTestId('email').textContent).toBe('valid@banka.rs');
+  });
+
+  it('clears session on mount when decodeJwt returns null (corrupted token)', () => {
+    vi.mocked(decodeJwt).mockReturnValue(null);
+    sessionStorage.setItem('accessToken', 'corrupted-token');
+    sessionStorage.setItem('user', JSON.stringify({ id: 1, email: 'x@y.rs', role: 'ADMIN', permissions: [] }));
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    );
+
+    expect(screen.getByTestId('authenticated').textContent).toBe('false');
+    expect(sessionStorage.getItem('accessToken')).toBeNull();
+  });
+
+  // ---------------------------------------------------------------------------
+  // FE-AUTH-03: isLoading reflektuje async login + logout
+  // ---------------------------------------------------------------------------
+
+  it('isLoading flips true during login then back to false', async () => {
+    let resolveLogin: ((value: { accessToken: string; refreshToken: string; tokenType: string }) => void) | undefined;
+    vi.mocked(authService.login).mockReturnValue(
+      new Promise((resolve) => {
+        resolveLogin = resolve;
+      })
+    );
+    vi.mocked(decodeJwt).mockReturnValue({
+      sub: 'a@b.rs',
+      role: 'ADMIN',
+      active: true,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iat: Math.floor(Date.now() / 1000),
+    });
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    );
+
+    expect(screen.getByTestId('isLoading').textContent).toBe('false');
+
+    // Pokreni login (ne await-uj jos)
+    act(() => {
+      screen.getByTestId('login-btn').click();
+    });
+
+    // Sad isLoading bi trebao da bude true dok promise nije resolved
+    await waitFor(() => {
+      expect(screen.getByTestId('isLoading').textContent).toBe('true');
+    });
+
+    // Resolve promise i sacekaj da login zavrsi
+    await act(async () => {
+      resolveLogin!({ accessToken: 'tok', refreshToken: 'ref', tokenType: 'Bearer' });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('isLoading').textContent).toBe('false');
+      expect(screen.getByTestId('authenticated').textContent).toBe('true');
+    });
+  });
+
+  it('isLoading is false on login failure (decodeJwt returns null)', async () => {
+    vi.mocked(authService.login).mockResolvedValue({
+      accessToken: 'bad',
+      refreshToken: 'r',
+      tokenType: 'Bearer',
+    });
+    vi.mocked(decodeJwt).mockReturnValue(null);
+
+    let caught: Error | undefined;
+    function LoginAttempt() {
+      const { login } = useAuth();
+      React.useEffect(() => {
+        login({ email: 'x@y.rs', password: '123' }).catch((e: Error) => {
+          caught = e;
+        });
+      }, [login]);
+      return null;
+    }
+
+    render(
+      <AuthProvider>
+        <LoginAttempt />
+        <AuthConsumer />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(caught).toBeDefined();
+    });
+    // Posle reject-a, isLoading mora biti vraceno na false (finally)
+    await waitFor(() => {
+      expect(screen.getByTestId('isLoading').textContent).toBe('false');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // FE-AUTH-01: permissions construction immutable + ADMIN baseline ne brise BE permisije
+  // ---------------------------------------------------------------------------
+
+  it('ADMIN role with empty BE permisije zadrzi ADMIN baseline permisiju', async () => {
+    vi.mocked(authService.login).mockResolvedValue({
+      accessToken: 'tok',
+      refreshToken: 'r',
+      tokenType: 'Bearer',
+    });
+    vi.mocked(decodeJwt).mockReturnValue({
+      sub: 'admin@banka.rs',
+      role: 'ADMIN',
+      active: true,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iat: Math.floor(Date.now() / 1000),
+    });
+    // BE vraca SUPERVISOR permisiju ali ne ADMIN — admin baseline mora ostati
+    vi.mocked(employeeService.getAll).mockResolvedValue({
+      content: [
+        {
+          id: 5,
+          firstName: 'Admin',
+          lastName: 'User',
+          email: 'admin@banka.rs',
+          permissions: [Permission.SUPERVISOR],
+        } as never,
+      ],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 10,
+    } as never);
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    );
+
+    await act(async () => {
+      screen.getByTestId('login-btn').click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated').textContent).toBe('true');
+    });
+    // ADMIN baseline + SUPERVISOR iz BE-a — oba moraju biti prisutni
+    expect(screen.getByTestId('hasAdmin').textContent).toBe('true');
+    expect(screen.getByTestId('isAdmin').textContent).toBe('true');
+  });
+
+  it('ADMIN role sa fetch failure zadrzi ADMIN baseline permisiju', async () => {
+    vi.mocked(authService.login).mockResolvedValue({
+      accessToken: 'tok',
+      refreshToken: 'r',
+      tokenType: 'Bearer',
+    });
+    vi.mocked(decodeJwt).mockReturnValue({
+      sub: 'admin@banka.rs',
+      role: 'ADMIN',
+      active: true,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iat: Math.floor(Date.now() / 1000),
+    });
+    // BE pada — ADMIN baseline mora preziveti
+    vi.mocked(employeeService.getAll).mockRejectedValue(new Error('BE down'));
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    );
+
+    await act(async () => {
+      screen.getByTestId('login-btn').click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated').textContent).toBe('true');
+    });
+    expect(screen.getByTestId('hasAdmin').textContent).toBe('true');
+  });
+
+  it('CLIENT role with canTradeStocks=false does not get TRADE_STOCKS permission', async () => {
+    vi.mocked(authService.login).mockResolvedValue({
+      accessToken: 'tok',
+      refreshToken: 'r',
+      tokenType: 'Bearer',
+    });
+    vi.mocked(decodeJwt).mockReturnValue({
+      sub: 'klijent@x.rs',
+      role: 'CLIENT',
+      active: true,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iat: Math.floor(Date.now() / 1000),
+    });
+    vi.mocked(clientService.getAll).mockResolvedValue({
+      content: [
+        {
+          id: 99,
+          firstName: 'Klijent',
+          lastName: 'X',
+          email: 'klijent@x.rs',
+          canTradeStocks: false,
+        } as never,
+      ],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 10,
+    } as never);
+
+    function ClientConsumer() {
+      const { user, hasPermission } = useAuth();
+      return (
+        <>
+          <span data-testid="client-id">{user?.id ?? -1}</span>
+          <span data-testid="can-trade">{String(hasPermission(Permission.TRADE_STOCKS))}</span>
+        </>
+      );
+    }
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+        <ClientConsumer />
+      </AuthProvider>
+    );
+
+    await act(async () => {
+      screen.getByTestId('login-btn').click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated').textContent).toBe('true');
+    });
+    expect(screen.getByTestId('client-id').textContent).toBe('99');
+    expect(screen.getByTestId('can-trade').textContent).toBe('false');
+  });
+
+  it('CLIENT role with canTradeStocks=true gets TRADE_STOCKS permission', async () => {
+    vi.mocked(authService.login).mockResolvedValue({
+      accessToken: 'tok',
+      refreshToken: 'r',
+      tokenType: 'Bearer',
+    });
+    vi.mocked(decodeJwt).mockReturnValue({
+      sub: 'klijent@x.rs',
+      role: 'CLIENT',
+      active: true,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iat: Math.floor(Date.now() / 1000),
+    });
+    vi.mocked(clientService.getAll).mockResolvedValue({
+      content: [
+        {
+          id: 99,
+          firstName: 'Klijent',
+          lastName: 'X',
+          email: 'klijent@x.rs',
+          canTradeStocks: true,
+        } as never,
+      ],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 10,
+    } as never);
+
+    function ClientConsumer() {
+      const { hasPermission } = useAuth();
+      return <span data-testid="can-trade">{String(hasPermission(Permission.TRADE_STOCKS))}</span>;
+    }
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+        <ClientConsumer />
+      </AuthProvider>
+    );
+
+    await act(async () => {
+      screen.getByTestId('login-btn').click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated').textContent).toBe('true');
+    });
+    expect(screen.getByTestId('can-trade').textContent).toBe('true');
+  });
+
+  // ---------------------------------------------------------------------------
+  // FE-SHR-01: AUTH_UNAUTHORIZED_EVENT listener cleans session + redirects
+  // ---------------------------------------------------------------------------
+
+  it('handles auth:unauthorized event by clearing session and navigating to /login', async () => {
+    const storedUser = {
+      id: 1,
+      email: 'x@y.rs',
+      username: 'x',
+      firstName: 'X',
+      lastName: 'Y',
+      role: 'ADMIN',
+      permissions: [Permission.ADMIN],
+    };
+    vi.mocked(decodeJwt).mockReturnValue({
+      sub: 'x@y.rs',
+      role: 'ADMIN',
+      active: true,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iat: Math.floor(Date.now() / 1000),
+    });
+    sessionStorage.setItem('accessToken', 'tok');
+    sessionStorage.setItem('refreshToken', 'rtok');
+    sessionStorage.setItem('user', JSON.stringify(storedUser));
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    );
+
+    expect(screen.getByTestId('authenticated').textContent).toBe('true');
+
+    // Dispatch event — kao da je api.ts interceptor pao posle refresh greske
+    act(() => {
+      window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated').textContent).toBe('false');
+    });
+    expect(sessionStorage.getItem('accessToken')).toBeNull();
+    expect(sessionStorage.getItem('user')).toBeNull();
+    // mockNavigate je pozvan jer pathname nije /login (jsdom default je '/')
+    expect(mockNavigate).toHaveBeenCalledWith('/login', { replace: true });
   });
 });

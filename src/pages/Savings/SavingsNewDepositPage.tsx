@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -37,6 +37,11 @@ export default function SavingsNewDepositPage() {
   const [rates, setRates] = useState<SavingsRateDto[]>([]);
   const [showOtp, setShowOtp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // FIX FE-FND-01: cuvamo validirane podatke iz onSubmit-a u ref-u tako da
+  // handleOtpVerified ne zavisi od `watch()` (koji moze vratiti stale state
+  // ako form remount-uje izmedju onSubmit i OTP verify). Closure-d data
+  // pattern (paritet sa NewPaymentPage 2PC flow-om).
+  const pendingDataRef = useRef<FormData | null>(null);
 
   const {
     register,
@@ -94,11 +99,20 @@ export default function SavingsNewDepositPage() {
       toast.error(`Minimalan iznos u ${currencyCode} je ${minAmount}`);
       return;
     }
+    // FIX FE-FND-01: snapshot validated form data u ref pa otvori OTP.
+    // Ref se cita u handleOtpVerified umesto `watch()` (anti-stale guard).
+    pendingDataRef.current = data;
     setShowOtp(true);
   };
 
   const handleOtpVerified = async (otpCode: string) => {
-    const data = watch();
+    // FIX FE-FND-01: koristimo snapshot iz onSubmit-a, ne live form state.
+    const data = pendingDataRef.current;
+    if (!data) {
+      toast.error('Podaci o depozitu nisu pripremljeni. Pokusajte ponovo.');
+      setShowOtp(false);
+      throw new Error('No pending deposit data');
+    }
     setSubmitting(true);
     try {
       const result = await savingsService.openDeposit({
@@ -110,6 +124,7 @@ export default function SavingsNewDepositPage() {
         otpCode,
       });
       toast.success('Depozit otvoren — Vasi novci ce raditi za vas');
+      pendingDataRef.current = null;
       navigate(`/savings/${result.id}`);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
@@ -268,7 +283,10 @@ export default function SavingsNewDepositPage() {
       <VerificationModal
         isOpen={showOtp}
         onVerified={handleOtpVerified}
-        onClose={() => setShowOtp(false)}
+        onClose={() => {
+          setShowOtp(false);
+          pendingDataRef.current = null;
+        }}
       />
     </div>
   );
