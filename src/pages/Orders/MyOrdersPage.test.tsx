@@ -261,4 +261,125 @@ describe('MyOrdersPage', () => {
 
     expect(screen.getByText('Zavrsen')).toBeInTheDocument();
   });
+
+  // TODO_final C3 #7 — detaljni filteri (status, datum od/do, tip hartije) + Reset.
+
+  it('renders advanced filter controls', async () => {
+    renderWithProviders(<MyOrdersPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('orders-advanced-filters-card')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('orders-status-filter')).toBeInTheDocument();
+    expect(screen.getByTestId('orders-date-from-filter')).toBeInTheDocument();
+    expect(screen.getByTestId('orders-date-to-filter')).toBeInTheDocument();
+    expect(screen.getByTestId('orders-listing-type-filter')).toBeInTheDocument();
+    expect(screen.getByTestId('orders-reset-filters')).toBeInTheDocument();
+  });
+
+  it('passes BE status filter to orderService.getMy', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<MyOrdersPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('orders-status-filter')).toBeInTheDocument();
+    });
+
+    mockGetMy.mockClear();
+    await user.selectOptions(screen.getByTestId('orders-status-filter'), 'PENDING');
+
+    await waitFor(() => {
+      expect(mockGetMy).toHaveBeenCalledWith(
+        0,
+        10,
+        expect.objectContaining({ status: 'PENDING' }),
+      );
+    });
+  });
+
+  it('passes dateFrom filter to orderService.getMy', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<MyOrdersPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('orders-date-from-filter')).toBeInTheDocument();
+    });
+
+    mockGetMy.mockClear();
+    const dateFromInput = screen.getByTestId('orders-date-from-filter');
+    await user.type(dateFromInput, '2026-01-01');
+
+    await waitFor(() => {
+      expect(mockGetMy).toHaveBeenCalledWith(
+        0,
+        10,
+        expect.objectContaining({ dateFrom: '2026-01-01' }),
+      );
+    });
+  });
+
+  it('passes listingType filter to orderService.getMy', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<MyOrdersPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('orders-listing-type-filter')).toBeInTheDocument();
+    });
+
+    mockGetMy.mockClear();
+    await user.selectOptions(screen.getByTestId('orders-listing-type-filter'), 'STOCK');
+
+    await waitFor(() => {
+      expect(mockGetMy).toHaveBeenCalledWith(
+        0,
+        10,
+        expect.objectContaining({ listingType: 'STOCK' }),
+      );
+    });
+  });
+
+  it('Resetuj filtere clears all filter values and re-fetches without filters', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<MyOrdersPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('orders-reset-filters')).toBeInTheDocument();
+    });
+
+    // Set some filters
+    await user.selectOptions(screen.getByTestId('orders-status-filter'), 'PENDING');
+    await user.selectOptions(screen.getByTestId('orders-listing-type-filter'), 'STOCK');
+
+    await waitFor(() => {
+      expect(
+        (screen.getByTestId('orders-status-filter') as HTMLSelectElement).value,
+      ).toBe('PENDING');
+    });
+
+    mockGetMy.mockClear();
+    await user.click(screen.getByTestId('orders-reset-filters'));
+
+    await waitFor(() => {
+      expect(
+        (screen.getByTestId('orders-status-filter') as HTMLSelectElement).value,
+      ).toBe('');
+      expect(
+        (screen.getByTestId('orders-listing-type-filter') as HTMLSelectElement).value,
+      ).toBe('');
+    });
+
+    // Posle reset-a, ne salju se filteri u BE.
+    await waitFor(() => {
+      const lastCall = mockGetMy.mock.calls[mockGetMy.mock.calls.length - 1];
+      expect(lastCall?.[2]).toEqual(
+        expect.objectContaining({
+          status: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+          listingType: undefined,
+        }),
+      );
+    });
+  });
 });

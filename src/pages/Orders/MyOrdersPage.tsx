@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useNavigate } from 'react-router-dom';
 import {
   ClipboardList,
+  FilterX,
   Inbox,
   Loader2,
   Plus,
@@ -173,6 +174,13 @@ export default function MyOrdersPage() {
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
   const [cancelingOrderId, setCancelingOrderId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  // TODO_final C3 #7 — dodatni BE-strana filteri (status/dateFrom/dateTo/listingType).
+  // Status posebno cuvamo: statusFilter ovde je FE-strana chip; dodatni
+  // statusBeFilter se salje BE-u za detaljnu istoriju ordera.
+  const [statusBeFilter, setStatusBeFilter] = useState('');
+  const [dateFromFilter, setDateFromFilter] = useState('');
+  const [dateToFilter, setDateToFilter] = useState('');
+  const [listingTypeFilter, setListingTypeFilter] = useState('');
   const [page, setPage] = useState(0);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -199,7 +207,13 @@ export default function MyOrdersPage() {
     }
 
     try {
-      const response = await orderService.getMy(page, limit);
+      const filters = {
+        status: statusBeFilter || undefined,
+        dateFrom: dateFromFilter || undefined,
+        dateTo: dateToFilter || undefined,
+        listingType: listingTypeFilter || undefined,
+      };
+      const response = await orderService.getMy(page, limit, filters);
       const nextOrders = asArray<Order>(response.content);
 
       if (!isMountedRef.current) {
@@ -229,7 +243,7 @@ export default function MyOrdersPage() {
         }
       }
     }
-  }, [limit, page]);
+  }, [limit, page, statusBeFilter, dateFromFilter, dateToFilter, listingTypeFilter]);
 
   useEffect(() => {
     void loadOrders(true);
@@ -290,6 +304,19 @@ export default function MyOrdersPage() {
       }
     }
   }, [loadOrders, orderToCancel]);
+
+  const resetFilters = useCallback(() => {
+    setStatusBeFilter('');
+    setDateFromFilter('');
+    setDateToFilter('');
+    setListingTypeFilter('');
+    setStatusFilter('ALL');
+    setPage(0);
+  }, []);
+
+  const hasActiveFilters = Boolean(
+    statusBeFilter || dateFromFilter || dateToFilter || listingTypeFilter,
+  );
 
   const sortedOrders = useMemo(() => [...orders].sort(sortByCreatedAtDesc), [orders]);
 
@@ -397,6 +424,127 @@ export default function MyOrdersPage() {
                 </Button>
               );
             })}
+          </CardContent>
+        </Card>
+
+        {/* TODO_final C3 #7 — filteri istorije ordera (status, datum, tip hartije). */}
+        <Card data-testid="orders-advanced-filters-card">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="h-5 w-1 rounded-full bg-gradient-to-b from-indigo-500 to-violet-600" />
+                <CardTitle>Detaljni filteri</CardTitle>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  resetFilters();
+                }}
+                disabled={!hasActiveFilters && statusFilter === 'ALL'}
+                data-testid="orders-reset-filters"
+              >
+                <FilterX className="mr-2 h-4 w-4" />
+                Resetuj filtere
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="orders-status-filter"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Status
+              </label>
+              <select
+                id="orders-status-filter"
+                aria-label="Filter po statusu"
+                data-testid="orders-status-filter"
+                value={statusBeFilter}
+                onChange={(event) => {
+                  setStatusBeFilter(event.target.value);
+                  setPage(0);
+                }}
+                className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Sve</option>
+                <option value="PENDING">Na cekanju</option>
+                <option value="APPROVED">Odobreni</option>
+                <option value="DECLINED">Odbijeni</option>
+                <option value="DONE">Zavrseni</option>
+                <option value="PARTIALLY_FILLED">Parcijalno popunjeni</option>
+                <option value="CANCELLED">Otkazani</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="orders-date-from-filter"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Datum od
+              </label>
+              <input
+                id="orders-date-from-filter"
+                aria-label="Datum od"
+                data-testid="orders-date-from-filter"
+                type="date"
+                value={dateFromFilter}
+                onChange={(event) => {
+                  setDateFromFilter(event.target.value);
+                  setPage(0);
+                }}
+                className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="orders-date-to-filter"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Datum do
+              </label>
+              <input
+                id="orders-date-to-filter"
+                aria-label="Datum do"
+                data-testid="orders-date-to-filter"
+                type="date"
+                value={dateToFilter}
+                onChange={(event) => {
+                  setDateToFilter(event.target.value);
+                  setPage(0);
+                }}
+                className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="orders-listing-type-filter"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Tip hartije
+              </label>
+              <select
+                id="orders-listing-type-filter"
+                aria-label="Filter po tipu hartije"
+                data-testid="orders-listing-type-filter"
+                value={listingTypeFilter}
+                onChange={(event) => {
+                  setListingTypeFilter(event.target.value);
+                  setPage(0);
+                }}
+                className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Sve</option>
+                <option value="STOCK">Akcije</option>
+                <option value="FUTURES">Futures</option>
+                <option value="FOREX">Forex</option>
+                <option value="OPTION">Opcije</option>
+              </select>
+            </div>
           </CardContent>
         </Card>
 

@@ -27,13 +27,26 @@ const orderService = {
   },
 
   /**
-   * GET /orders/my?page=0&size=20
-   * Korisnik: moji orderi.
+   * GET /orders/my?page=0&size=20&status=...&dateFrom=...&dateTo=...&listingType=...
+   * Korisnik: moji orderi sa opcionim filterima (TODO_final C3 #7).
+   * BE OrderController.getMyOrders prihvata sve filter query parametre.
    */
-  getMy: async (page: number = 0, size: number = 20): Promise<PaginatedResponse<Order>> => {
-    const response = await api.get('/orders/my', {
-      params: { page, size },
-    });
+  getMy: async (
+    page: number = 0,
+    size: number = 20,
+    filters?: {
+      status?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      listingType?: string;
+    },
+  ): Promise<PaginatedResponse<Order>> => {
+    const params: Record<string, string | number> = { page, size };
+    if (filters?.status) params.status = filters.status;
+    if (filters?.dateFrom) params.dateFrom = filters.dateFrom;
+    if (filters?.dateTo) params.dateTo = filters.dateTo;
+    if (filters?.listingType) params.listingType = filters.listingType;
+    const response = await api.get('/orders/my', { params });
     return response.data;
   },
 
