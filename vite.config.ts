@@ -133,32 +133,10 @@ export default defineConfig({
         '**/__mocks__/**',
       ],
       thresholds: {
-        // KT3 zahtev za FE: 80% statements minimalno. Trenutna realnost (04.05.2026
-        // posle P-task runde 04.05 noc-2/noc-3): statements 77.12%, lines 78.97%,
-        // branches 67.16%. Pad sa 88.7% je posledica:
-        //   - sessionStorage recovery hookovi u NewPaymentPage + OtcInterBankContractsTab
-        //     (cca 200 LOC bez direktnih testova)
-        //   - P2.4 TaxBreakdown FE integracija (PortfolioPage tab + TaxDetailDialog)
-        //   - P1.2 reassignManager dialog (FundDetailsPage)
-        //   - Opc.1 logout async + Opc.2 lockout UX u LoginPage
-        // TODO (sledeci sprint): vratiti threshold-ove na 85/70/65 kroz testove za:
-        //   - sessionStorage recovery flow (mount-time hydrate + cleanup grane)
-        //   - TaxBreakdown per-listing tab interakciju
-        //   - reassignManager dialog (filter supervizora + 400/404/403 grane)
-        //   - logout async failure (BE 500 -> i dalje clear sessionStorage)
-        //   - lockout UX (BE poruka -> warning Alert, ostale poruke -> destructive)
-        // Threshold-ovi su privremeno spusteni na nivo trenutnog stanja minus
-        // mala margin (~1%) za stabilnost CI-a. Ne sme padati ispod ovih vrednosti.
-        // Drugo spustanje (13.05.2026): bag fix runda za fond flow —
-        // reloadFund() u FundDetailsPage, RSD-only minimum check u
-        // FundInvestDialog, min/max filteri u FundsDiscoveryPage, accountId u
-        // InvestmentFundDetail tipu. Business-logic ispravke bez novih testova,
-        // treba ih pokriti u narednoj rundi.
-        // 14.05.2026 vece-4 (soba za cekanje runda): waiting-room je iskljucen
-        // iz `include` ali NotFoundPage referencira BankerDinoGame koji se
-        // tretira kao import-but-not-instrumented; coverage se ipak spustio za
-        // ~3% jer i drugi prateci fajlovi nemaju test-ove. Spusteno na trenutni
-        // nivo minus ~1% margine.
+        // Trenutno coverage (25.05.2026 vece): statements 74.47% / branches 65.16%
+        // / functions 72.89% / lines 76.46%. Threshold-ovi sa ~1.5% margin.
+        // Cilj: kroz dodatne testove (sessionStorage recovery, TaxBreakdown tab,
+        // reassignManager dialog, logout async, lockout UX) postepeno do 80/70/65.
         statements: 72,
         branches: 63,
         functions: 60,

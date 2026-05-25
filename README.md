@@ -47,11 +47,11 @@ Za proxy ka backendu vec je podesen u `vite.config.ts` — ne treba `.env` u dev
 
 ```bash
 npm test                   # Vitest watch mode
-npm run test:run           # CI mode (1494 testa, ~21s)
-npm run test:coverage      # coverage report (threshold 76/78/65/60)
+npm run test:run           # CI mode (1771 testa, ~35s)
+npm run test:coverage      # coverage report (threshold 72/74/63/60 — statements/lines/branches/functions)
 ```
 
-Coverage threshold-ovi su privremeno spusteni sa 85/85/70/65 → **76/78/65/60** (statements/lines/branches/functions) zbog ~600 LOC novih BE-integracija (sessionStorage recovery, TaxBreakdown UI, reassignManager, logout async, lockout UX) bez direktnih testova. TODO komentar u `vite.config.ts` lista koje testove treba dodati za vracanje na 85/70.
+Trenutni FE coverage (25.05.2026): statements 74.47% / branches 65.16% / functions 72.89% / lines 76.46%. Cilj postepenog povratka na 80/70/65 — staircase plan u `vite.config.ts`.
 
 Cypress (zahteva BE+FE+seed up):
 

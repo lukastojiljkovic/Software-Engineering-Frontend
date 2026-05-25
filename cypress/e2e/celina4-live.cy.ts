@@ -170,9 +170,9 @@ describe('Live C4: Fondovi - Detalji', () => {
     cy.get('h1', { timeout: 10000 }).contains('Investicioni fondovi').should('be.visible');
   });
 
-  it('L7: /funds/1 redirectuje na /funds kad BE vrati gresku (BE still TODO)', () => {
+  it('L7: /funds/1 prikazuje detalje fonda ili redirectuje na /funds', () => {
     cy.visit('/funds/1');
-    // BE /funds/{id} nije implementiran — stranica redirectuje na /funds
+    // BE /funds/{id} vraca pun detail; ako fond ne postoji u seed-u → redirect.
     cy.url().should('include', '/funds');
   });
 
@@ -426,7 +426,7 @@ describe('Live C4: MyFundsTab', () => {
     });
   });
 
-  it('L21: Supervisor ima "Moji fondovi" tab i vidi manager view ili backend TODO poruku', () => {
+  it('L21: Supervisor ima "Moji fondovi" tab i vidi manager view ili graceful fallback', () => {
     loginSupervisor();
     cy.visit('/portfolio');
     cy.contains('button', 'Moji fondovi').click();
