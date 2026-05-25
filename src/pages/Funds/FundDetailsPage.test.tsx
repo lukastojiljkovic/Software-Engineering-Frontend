@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import FundDetailsPage from './FundDetailsPage';
 import { renderWithProviders } from '@/test/test-utils';
@@ -12,6 +12,7 @@ const mockMyPositions = vi.fn();
 const mockBankPositions = vi.fn();
 const mockListFunds = vi.fn();
 const mockGetFundStatistics = vi.fn();
+const mockGetFundDividendHistory = vi.fn();
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -43,6 +44,12 @@ vi.mock('@/services/investmentFundService', () => ({
 vi.mock('@/services/fundStatisticsService', () => ({
   default: {
     getFundStatistics: (...a: unknown[]) => mockGetFundStatistics(...a),
+  },
+}));
+
+vi.mock('@/services/fundDividendService', () => ({
+  default: {
+    getFundDividendHistory: (...a: unknown[]) => mockGetFundDividendHistory(...a),
   },
 }));
 
@@ -106,6 +113,7 @@ describe('FundDetailsPage', () => {
     mockBankPositions.mockResolvedValue([]);
     mockListFunds.mockResolvedValue([{ id: 101 }, { id: 102 }]);
     mockGetFundStatistics.mockResolvedValue(FUND_STATS);
+    mockGetFundDividendHistory.mockResolvedValue([]);
   });
 
   it('prikazuje loading skeleton dok ucitava', () => {
@@ -229,6 +237,69 @@ describe('FundDetailsPage', () => {
     );
     await waitFor(() =>
       expect(screen.getByTestId('fund-comparison-chart')).toBeInTheDocument(),
+    );
+  });
+
+  // --- TODO_final C4 #14 — Fund-level dividend history ---
+
+  it('renderuje karticu Raspodela dividendi fonda', async () => {
+    renderWithProviders(<FundDetailsPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('fund-dividends-card')).toBeInTheDocument(),
+    );
+    expect(screen.getByText('Raspodela dividendi fonda')).toBeInTheDocument();
+  });
+
+  it('prikazuje read-only Reinvest Badge', async () => {
+    renderWithProviders(<FundDetailsPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('fund-dividend-reinvest-badge')).toBeInTheDocument(),
+    );
+  });
+
+  it('empty state se renderuje kad fond nije primio dividende', async () => {
+    renderWithProviders(<FundDetailsPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('fund-dividends-empty')).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Fond jos nije primio dividende/i)).toBeInTheDocument();
+  });
+
+  it('prikazuje listu dividendi kad postoje (paymentDate DESC)', async () => {
+    mockGetFundDividendHistory.mockResolvedValueOnce([
+      {
+        fundId: 101,
+        listingId: 5,
+        listingTicker: 'GOOGL',
+        paymentDate: '2026-04-15',
+        grossAmount: 1500.5,
+        reinvestedAmount: 1000.5,
+        distributedToClients: 500.0,
+        currency: 'USD',
+      },
+      {
+        fundId: 101,
+        listingId: 2,
+        listingTicker: 'MSFT',
+        paymentDate: '2026-03-10',
+        grossAmount: 800.0,
+        currency: 'USD',
+      },
+    ]);
+    renderWithProviders(<FundDetailsPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('fund-dividends-table')).toBeInTheDocument(),
+    );
+    const table = screen.getByTestId('fund-dividends-table');
+    expect(within(table).getByText('GOOGL')).toBeInTheDocument();
+    expect(within(table).getByText('MSFT')).toBeInTheDocument();
+  });
+
+  it('error state se renderuje na non-404 gresci', async () => {
+    mockGetFundDividendHistory.mockRejectedValueOnce({ response: { status: 500 } });
+    renderWithProviders(<FundDetailsPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('fund-dividends-error')).toBeInTheDocument(),
     );
   });
 });

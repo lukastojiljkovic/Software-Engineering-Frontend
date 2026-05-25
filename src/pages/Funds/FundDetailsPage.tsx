@@ -15,6 +15,7 @@ import {
   DollarSign,
   ShoppingCart,
   UserCog,
+  Coins,
   X,
   Loader2,
 } from 'lucide-react';
@@ -22,11 +23,14 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { useAuth } from '@/context/AuthContext';
 import investmentFundService from '@/services/investmentFundService';
 import fundStatisticsService from '@/services/fundStatisticsService';
+import fundDividendService from '@/services/fundDividendService';
 import { employeeService } from '@/services/employeeService';
 import type { InvestmentFundDetail, FundPerformancePoint, ClientFundPosition } from '@/types/celina4';
 import type { FundStatisticsDto } from '@/types/fundStatistics';
+import type { FundDividendHistoryDto } from '@/types/fundDividend';
 import type { Employee } from '@/types';
 import { formatAmount, formatDate, formatPrice, getErrorMessage, toIsoDateOnly } from '@/utils/formatters';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -134,6 +138,9 @@ export default function FundDetailsPage() {
   const [bankPosition, setBankPosition] = useState<ClientFundPosition | null>(null);
   const [investMode, setInvestMode] = useState<null | 'self' | 'bank'>(null);
   const [withdrawMode, setWithdrawMode] = useState<null | 'self' | 'bank'>(null);
+  // TODO_final C4 #14 — Fund-level dividends (Jovan Krunic / FE4).
+  const [fundDividends, setFundDividends] = useState<FundDividendHistoryDto[]>([]);
+  const [fundDividendsStatus, setFundDividendsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
   // Refresh fund detalji (KPI kartice: vrednost, likvidnost, profit) — zove se posle
   // svake invest/withdraw uplate jer reloadPositions samo refresh-uje pozicije klijenta.
@@ -264,6 +271,27 @@ export default function FundDetailsPage() {
         if (cancelled) return;
         const s = (err as { response?: { status?: number } })?.response?.status;
         setStatsStatus(s === 404 || s === 501 || s === 405 ? 'unavailable' : 'error');
+      });
+    return () => { cancelled = true; };
+  }, [id]);
+
+  // TODO_final C4 #14 — Fund-level dividends (Jovan Krunic / FE4).
+  // Zaseban poziv (404 ne ruzi stranicu, fundDividendService vraca prazan niz).
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    setFundDividendsStatus('loading');
+    void fundDividendService
+      .getFundDividendHistory(Number(id))
+      .then((data) => {
+        if (cancelled) return;
+        setFundDividends(data);
+        setFundDividendsStatus('ready');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setFundDividends([]);
+        setFundDividendsStatus('error');
       });
     return () => { cancelled = true; };
   }, [id]);
@@ -728,6 +756,82 @@ export default function FundDetailsPage() {
                 narandžasto isprekidano: prosek svih fondova.
               </p>
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* TODO_final C4 #14 — Raspodela dividendi fonda (Jovan Krunic / FE4). */}
+      <Card data-testid="fund-dividends-card">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Coins className="h-5 w-5" />
+              Raspodela dividendi fonda
+            </CardTitle>
+            {/*
+              Reinvest mod je BE-side feature; FE prikazuje read-only Badge
+              dok BE ne izlozi `PATCH /funds/{id}/dividend-policy`.
+            */}
+            <Badge variant="secondary" data-testid="fund-dividend-reinvest-badge">
+              Reinvest: NE
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {fundDividendsStatus === 'loading' ? (
+            <div className="space-y-2 p-6">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-10 animate-pulse rounded bg-muted/50" />
+              ))}
+            </div>
+          ) : fundDividendsStatus === 'error' ? (
+            <div
+              className="px-6 py-4 text-sm text-red-500"
+              data-testid="fund-dividends-error"
+            >
+              Greska pri ucitavanju dividendi fonda. Pokusajte ponovo kasnije.
+            </div>
+          ) : fundDividends.length === 0 ? (
+            <div
+              className="flex flex-col items-center py-10 text-muted-foreground"
+              data-testid="fund-dividends-empty"
+            >
+              <Coins className="h-10 w-10 mb-3 opacity-30" />
+              <p>Fond jos nije primio dividende</p>
+            </div>
+          ) : (
+            <Table data-testid="fund-dividends-table">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ticker</TableHead>
+                  <TableHead>Datum</TableHead>
+                  <TableHead className="text-right">Bruto iznos</TableHead>
+                  <TableHead className="text-right">Reinvestirano</TableHead>
+                  <TableHead className="text-right">Distribuirano klijentima</TableHead>
+                  <TableHead>Valuta</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {fundDividends.map((d, idx) => (
+                  <TableRow key={`${d.fundId}-${d.listingId}-${d.paymentDate}-${idx}`}>
+                    <TableCell className="font-medium">{d.listingTicker}</TableCell>
+                    <TableCell>{formatDate(d.paymentDate)}</TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {formatAmount(d.grossAmount)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums text-muted-foreground">
+                      {d.reinvestedAmount != null ? formatAmount(d.reinvestedAmount) : '—'}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {d.distributedToClients != null
+                        ? formatAmount(d.distributedToClients)
+                        : '—'}
+                    </TableCell>
+                    <TableCell>{d.currency}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
