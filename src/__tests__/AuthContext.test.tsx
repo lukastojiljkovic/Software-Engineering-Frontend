@@ -31,10 +31,13 @@ vi.mock('../services/employeeService', () => ({
   },
 }));
 
-// Mock clientService — CLIENT role lookup (T4A-017 canTradeStocks)
+// Mock clientService — CLIENT role lookup (T4A-017 canTradeStocks).
+// AuthContext koristi `getMe` (self-lookup) za CLIENT role; `getAll` ostaje za
+// kompatibilnost sa nekoliko legacy testova koji jos uvek mockuju paged endpoint.
 vi.mock('../services/clientService', () => ({
   clientService: {
     getAll: vi.fn().mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 10 }),
+    getMe: vi.fn().mockRejectedValue(new Error('not mocked')),
   },
 }));
 
@@ -625,20 +628,12 @@ describe('AuthContext', () => {
       exp: Math.floor(Date.now() / 1000) + 3600,
       iat: Math.floor(Date.now() / 1000),
     });
-    vi.mocked(clientService.getAll).mockResolvedValue({
-      content: [
-        {
-          id: 99,
-          firstName: 'Klijent',
-          lastName: 'X',
-          email: 'klijent@x.rs',
-          canTradeStocks: false,
-        } as never,
-      ],
-      totalElements: 1,
-      totalPages: 1,
-      number: 0,
-      size: 10,
+    vi.mocked(clientService.getMe).mockResolvedValue({
+      id: 99,
+      firstName: 'Klijent',
+      lastName: 'X',
+      email: 'klijent@x.rs',
+      canTradeStocks: false,
     } as never);
 
     function ClientConsumer() {
@@ -682,20 +677,12 @@ describe('AuthContext', () => {
       exp: Math.floor(Date.now() / 1000) + 3600,
       iat: Math.floor(Date.now() / 1000),
     });
-    vi.mocked(clientService.getAll).mockResolvedValue({
-      content: [
-        {
-          id: 99,
-          firstName: 'Klijent',
-          lastName: 'X',
-          email: 'klijent@x.rs',
-          canTradeStocks: true,
-        } as never,
-      ],
-      totalElements: 1,
-      totalPages: 1,
-      number: 0,
-      size: 10,
+    vi.mocked(clientService.getMe).mockResolvedValue({
+      id: 99,
+      firstName: 'Klijent',
+      lastName: 'X',
+      email: 'klijent@x.rs',
+      canTradeStocks: true,
     } as never);
 
     function ClientConsumer() {
