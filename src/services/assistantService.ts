@@ -17,8 +17,13 @@ import type {
   ArbitroSseEvent,
   WizardSlotSelectResponse,
 } from '../types/arbitro';
+import { getApiUrl } from '../config/runtime';
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api';
+// Runtime config: cita window._env_.API_URL pri svakom pozivu (lazy).
+// Wrapper funkcija da bi svaki fetch dobio svezu vrednost u k8s deploy-u.
+function getApiBase(): string {
+  return getApiUrl();
+}
 
 interface PersistedMessageDto {
   id: number;
@@ -129,7 +134,7 @@ export function streamChat(
   const controller = new AbortController();
   let chatDone = false;
 
-  fetch(`${API_BASE}/assistant/chat`, {
+  fetch(`${getApiBase()}/assistant/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -279,7 +284,7 @@ function parseSseEvent(eventName: string, data: string): ArbitroSseEvent | null 
 /* ============================== REST endpoints ============================== */
 
 async function authedJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(`${getApiBase()}${path}`, {
     ...init,
     headers: {
       Accept: 'application/json',
@@ -423,7 +428,7 @@ export function streamChatWithMedia(
     formData.append('pageContext', JSON.stringify(request.pageContext));
   }
 
-  fetch(`${API_BASE}/assistant/chat-multipart`, {
+  fetch(`${getApiBase()}/assistant/chat-multipart`, {
     method: 'POST',
     headers: {
       Accept: 'text/event-stream',
@@ -464,7 +469,7 @@ export async function fetchTtsAudio(
   speed?: number
 ): Promise<Blob | null> {
   try {
-    const response = await fetch(`${API_BASE}/assistant/tts`, {
+    const response = await fetch(`${getApiBase()}/assistant/tts`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

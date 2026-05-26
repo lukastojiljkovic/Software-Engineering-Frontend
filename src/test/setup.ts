@@ -1,6 +1,25 @@
 import { vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 
+// ─── Runtime config defaults za sve testove ────────────────────────────────
+// W1-T1: simuliraj `/config.js` injection u test okruzenju. window._env_ je
+// primarni izvor runtime config-a (vidi src/config/runtime.ts); fallback ka
+// import.meta.env.VITE_* je za local `npm run dev` (Vite mode === 'development').
+// U test mode-u Vite ne ucitava .env.development pa stub-ujemo VITE_API_URL
+// rucno da bi runtime.test.ts mogao da verifikuje fallback chain.
+if (typeof window !== 'undefined') {
+  window._env_ = {
+    API_URL: '/api',
+    OUR_BANK_CODE: 'RN-222',
+    ENV: 'test',
+  };
+}
+vi.stubEnv('VITE_API_URL', 'http://localhost:8080');
+vi.stubEnv('VITE_OUR_BANK_CODE', 'RN-222');
+// Namerno NE stub-ujemo VITE_ENV jer runtime.test.ts treba 'unknown' fallback
+// kad je window._env_ undefined — to verifikuje da getEnv() chain ne curi
+// vrednost iz import.meta.env kada nema setovan.
+
 // Mock window.matchMedia for components that use it (dark mode, etc.)
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

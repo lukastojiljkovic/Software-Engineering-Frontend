@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/table';
 import { asArray, formatAmount, formatDateTime, getErrorMessage, getPreferredAccount } from '@/utils/formatters';
 import { computeOfferDeviation } from './otcOfferUtils';
+import { getOurBankCode } from '@/config/runtime';
 
 type OpenState =
   | { type: 'accept'; offerId: string }
@@ -32,9 +33,10 @@ type OpenState =
   | null;
 
 // FE-OTC-04 fix: konfigurabilno preko env var-a (Vite VITE_*).
+// W1-T1: prebaceno na runtime config (window._env_) za k8s deploy parity.
 // Fallback 'RN-222' = Banka 2 (Tim 2) routing prefix; production override
-// preko `.env` ili docker-compose `VITE_OUR_BANK_CODE=...`.
-const OUR_BANK_CODE: string = (import.meta.env.VITE_OUR_BANK_CODE as string | undefined) ?? 'RN-222';
+// preko ConfigMap env vars + `docker-entrypoint.sh` envsubst.
+const OUR_BANK_CODE: string = getOurBankCode();
 
 /**
  * T2-G UX polish (2026-05-20): odredi koja je moja uloga u inter-bank pregovoru.

@@ -1,0 +1,8 @@
+# Shell scripts MORAJU biti LF cak i na Windows-u — Docker Alpine ne ume da
+# izvrsi CRLF shebang ("#!/bin/sh\r\n" se parsira kao "/bin/sh\r" koji ne postoji).
+*.sh text eol=lf
+docker-entrypoint.sh text eol=lf
+
+# Docker fajlovi takodje LF za konzistentnost u multi-stage build-u.
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf

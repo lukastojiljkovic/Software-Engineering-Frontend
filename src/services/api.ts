@@ -1,7 +1,15 @@
 import axios, { type AxiosError, type AxiosRequestConfig } from 'axios';
 import { AUTH_UNAUTHORIZED_EVENT } from './authEvents';
+import { getApiUrl } from '../config/runtime';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// Lazy-eval: getApiUrl() se poziva pri svakom request-u kroz interceptor,
+// NE pri import-u modula. To dozvoljava window._env_ injection iz /config.js
+// pre prvog API poziva (k8s ConfigMap deploy pattern). Bez ovog, FE bi se
+// build-ovao sa hardcoded baseURL i isto image ne bi moglo da se reuse-uje
+// kroz dev/staging/prod environment-e.
+function getBaseUrl(): string {
+  return getApiUrl();
+}
 
 // Re-export za backwards-compat (FE-SHR-01). AuthContext sada importuje
 // direktno iz `./authEvents` da se izbegnu test brittleness-i sa api mockom.
@@ -14,15 +22,19 @@ function emitUnauthorized() {
 }
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  // baseURL se postavlja u request interceptor preko getBaseUrl() —
+  // ne hardcode-ujemo ga ovde da bi runtime config bio uziman pri svakom pozivu.
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor: dodaj JWT token u svaki zahtev
+// Request interceptor: dodaj JWT token + svezi baseURL u svaki zahtev.
+// baseURL injection ovde (a ne u axios.create) je kljucan za k8s deploy —
+// dozvoljava promenu API endpoint-a preko window._env_ bez restart-a.
 api.interceptors.request.use(
   (config) => {
+    config.baseURL = getBaseUrl();
     const token = sessionStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -43,7 +55,7 @@ async function doActualRefresh(): Promise<string> {
   if (!refreshToken) {
     throw new Error('No refresh token available');
   }
-  const response = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+  const response = await axios.post(`${getBaseUrl()}/auth/refresh`, { refreshToken });
   const { accessToken, refreshToken: newRefreshToken } = response.data;
   sessionStorage.setItem('accessToken', accessToken);
   if (newRefreshToken) {

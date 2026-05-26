@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/context/ThemeContext';
+import { getApiUrl } from '@/config/runtime';
 
 /* ─────────────── Data ─────────────── */
 
@@ -94,7 +95,7 @@ const mockTransactions = [
 function useBackendStatus() {
   const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   useEffect(() => {
-    const apiBaseUrl = import.meta.env.VITE_API_URL ?? '/api';
+    const apiBaseUrl = getApiUrl();
     let cancelled = false;
     const check = async () => {
       try {

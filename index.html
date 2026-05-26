@@ -5,6 +5,10 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Banka 2025</title>
+    <!-- Runtime config (W1-T1) — MORA biti pre main bundle-a da bi
+         window._env_ bio dostupan getApiUrl()/getOurBankCode()/getEnv() helper-ima
+         pri prvom modulom load-u. Generise se u container entrypoint-u kroz envsubst. -->
+    <script src="/config.js"></script>
   </head>
   <body>
     <div id="root"></div>
