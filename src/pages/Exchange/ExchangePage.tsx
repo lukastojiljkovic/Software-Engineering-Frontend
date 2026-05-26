@@ -85,61 +85,6 @@ function normalizeExchangeRates(rates: ExchangeRate[]): ExchangeRate[] {
   ).filter((rate): rate is ExchangeRate => Boolean(rate));
 }
 
-// Generate fake sparkline data for visual effect
-function generateSparkline(seed: string): number[] {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-    hash |= 0;
-  }
-  const points: number[] = [];
-  for (let i = 0; i < 7; i++) {
-    hash = ((hash << 5) - hash) + i;
-    hash |= 0;
-    points.push(30 + (Math.abs(hash) % 40));
-  }
-  return points;
-}
-
-function MiniSparkline({ data, color }: { data: number[]; color: string }) {
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const range = max - min || 1;
-  const height = 24;
-  const width = 60;
-  const step = width / (data.length - 1);
-
-  const points = data.map((v, i) => {
-    const x = i * step;
-    const y = height - ((v - min) / range) * height;
-    return `${x},${y}`;
-  }).join(' ');
-
-  return (
-    <svg width={width} height={height} className="opacity-60">
-      <polyline
-        points={points}
-        fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-const sparklineColors: Record<string, string> = {
-  RSD: '#3b82f6',
-  EUR: '#6366f1',
-  USD: '#22c55e',
-  CHF: '#ef4444',
-  GBP: '#a855f7',
-  JPY: '#f97316',
-  CAD: '#f43f5e',
-  AUD: '#14b8a6',
-};
-
 export default function ExchangePage() {
   const [rates, setRates] = useState<ExchangeRate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -251,9 +196,7 @@ export default function ExchangePage() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {rates.map((rate) => {
-                const sparkData = generateSparkline(rate.currency);
-                return (
+              {rates.map((rate) => (
                   <Card
                     key={rate.currency}
                     className={`rounded-2xl border shadow-sm hover:shadow-md transition-all duration-200 border-l-4 ${currencyBorders[rate.currency] || 'border-l-gray-500'}`}
@@ -271,9 +214,14 @@ export default function ExchangePage() {
                             <span className={`font-bold text-lg ${currencyColors[rate.currency] || ''}`}>{rate.currency}</span>
                             <span className="text-xs text-muted-foreground hidden sm:inline">{currencyNames[rate.currency]}</span>
                           </div>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <MiniSparkline data={sparkData} color={sparklineColors[rate.currency] || '#6366f1'} />
-                          </div>
+                          {/*
+                            NAPOMENA: prethodno je ovde prikazivan "MiniSparkline" graf
+                            generisan iz hash-a oznake valute (`generateSparkline`).
+                            Tehnicki je to bila lazna kriva bez veze sa stvarnim
+                            istorijskim kursevima — pa je uklonjeno po Luka direktivi
+                            "Ne stavljaj lazne podatke". Kad BE doda /exchange/history
+                            endpoint, vraticemo realnu sparkline iz pravih podataka.
+                          */}
                         </div>
 
                         {/* Rates */}
@@ -294,8 +242,7 @@ export default function ExchangePage() {
                       </div>
                     </CardContent>
                   </Card>
-                );
-              })}
+                ))}
             </div>
           )}
         </div>
