@@ -243,18 +243,18 @@ jobs:
         # Bez trading-service-a Celina 3+4 live spec-ovi ne mogu da rade
         # (svi /securities, /orders/new?listingId=... testovi).
         run: |
-          docker pull ghcr.io/raf-si-2025/banka2-backend:latest
+          docker pull ghcr.io/raf-si-2025/banka-2-backend:latest
           docker pull ghcr.io/raf-si-2025/banka-2-trading-service:latest || echo "::warning::trading-service image nije dostupan"
           echo "Cekam jos 60s za potencijalno noviji BE-CD push..."
           sleep 60
-          docker pull ghcr.io/raf-si-2025/banka2-backend:latest || true
+          docker pull ghcr.io/raf-si-2025/banka-2-backend:latest || true
           docker pull ghcr.io/raf-si-2025/banka-2-trading-service:latest || true
 
       - name: Skip if backend image unavailable
         if: steps.pull-backend.outcome == 'failure'
         run: |
           echo "::warning::Backend Docker image not available (GHCR private). Skipping Live E2E."
-          echo "To fix: make ghcr.io/raf-si-2025/banka2-backend package public, or add a GHCR_PAT secret with read:packages scope."
+          echo "To fix: make ghcr.io/raf-si-2025/banka-2-backend package public, or add a GHCR_PAT secret with read:packages scope."
           echo "SKIP_LIVE=true" >> $GITHUB_ENV
 
       - name: Start backend container
@@ -277,7 +277,7 @@ jobs:
             -e STOCK_API_KEYS="ci-key-1,ci-key-2,ci-key-3,ci-key-4" \
             -e AUTH_RATE_LIMIT_ENABLED="true" \
             -e AUTH_RATE_LIMIT_CAPACITY="100000" \
-            ghcr.io/raf-si-2025/banka2-backend:latest
+            ghcr.io/raf-si-2025/banka-2-backend:latest
 
       - name: Wait for backend to be ready
         if: env.SKIP_LIVE != 'true'
