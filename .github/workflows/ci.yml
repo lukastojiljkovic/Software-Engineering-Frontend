@@ -118,7 +118,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: vitest-coverage
@@ -152,7 +152,7 @@ jobs:
           spec: "cypress/e2e/celina1-mock.cy.ts,cypress/e2e/celina2-mock.cy.ts,cypress/e2e/celina3-mock.cy.ts,cypress/e2e/celina4-mock.cy.ts"
 
       - name: Upload screenshots on failure
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cypress-mocked-screenshots
@@ -609,7 +609,7 @@ jobs:
           spec: ${{ steps.cypress-specs.outputs.SPECS }}
 
       - name: Upload screenshots on failure
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cypress-live-screenshots
