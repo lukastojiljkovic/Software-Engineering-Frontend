@@ -1057,12 +1057,13 @@ describe('Kompletni E2E Flowovi - Celina 1', () => {
     cy.visit('/admin/employees', { onBeforeLoad: setupAdminSession });
     cy.wait('@list');
 
-    // Step 2: Navigate to create
-    cy.contains(/novi|dodaj|kreiraj/i).click();
+    // Step 2: Navigate to create — preciznije: ciljaj button na page header-u,
+    // ne sidebar "Dodaj" iz WatchlistQuickAccess widget-a (first match prethodno).
+    cy.contains('button', /Novi zaposleni/i).click();
     cy.url().should('include', '/admin/employees/new');
 
-    // Step 3: Cancel and go back
-    cy.contains(/odustani|nazad|otkaži/i).click();
+    // Step 3: Cancel and go back — preciznije: button selektor unutar EmployeeCreate page-a.
+    cy.contains('button', /Odustani|Nazad|Otkaži/i).click();
     cy.url().should('include', '/admin/employees');
   });
 
