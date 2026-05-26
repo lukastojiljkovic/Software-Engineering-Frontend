@@ -39,6 +39,15 @@ export const clientService = {
     return mapClientFromBE(response.data);
   },
 
+  // Self-lookup endpoint — vraca SOPSTVENI klijent zapis po JWT email-u.
+  // BE: GET /clients/me (`@authenticated()`) — bez ADMIN/EMPLOYEE role gating-a.
+  // Koristi se u AuthContext za nakon-login fetch (CLIENT NE moze /clients/?email=...
+  // jer je `/clients/**` rezervisano za ADMIN/EMPLOYEE).
+  getMe: async (): Promise<Client> => {
+    const response = await api.get<Record<string, unknown>>('/clients/me');
+    return mapClientFromBE(response.data);
+  },
+
   create: async (data: Partial<Client> & { password?: string }): Promise<Client> => {
     // Map phoneNumber -> phone for BE
     const payload = {

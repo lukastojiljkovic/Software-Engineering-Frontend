@@ -109,7 +109,7 @@ async function fetchEmployeePermissions(email: string): Promise<{
   return { permissions: [], userId: 0 };
 }
 
-async function fetchClientInfo(email: string): Promise<{
+async function fetchClientInfo(_email: string): Promise<{
   permissions: Permission[];
   userId: number;
   firstName?: string;
@@ -117,21 +117,17 @@ async function fetchClientInfo(email: string): Promise<{
 }> {
   // T4A-017: ako BE javi canTradeStocks=false, klijent NE dobija TRADE_STOCKS.
   // Default je true radi backwards-compat (stari klijenti bez polja).
+  // FIX: koristi /clients/me self-lookup — CLIENT NEMA pravo na /clients?email=...
+  // (rezervisano za ADMIN/EMPLOYEE per GlobalSecurityConfig); 403 spam u konzoli.
   try {
-    const clientsResponse = await clientService.getAll({ email, page: 0, limit: 1 });
-    const clients = clientsResponse.content;
-    if (clients.length > 0) {
-      const cli = clients[0];
-      const canTrade = (cli as unknown as { canTradeStocks?: boolean }).canTradeStocks;
-      return {
-        permissions: canTrade !== false ? [Permission.TRADE_STOCKS] : [],
-        userId: cli.id,
-        firstName: cli.firstName,
-        lastName: cli.lastName,
-      };
-    }
-    // Nismo nasli klijenta — ostavi userId=0 ali daj TRADE_STOCKS default (backwards-compat).
-    return { permissions: [Permission.TRADE_STOCKS], userId: 0 };
+    const cli = await clientService.getMe();
+    const canTrade = (cli as unknown as { canTradeStocks?: boolean }).canTradeStocks;
+    return {
+      permissions: canTrade !== false ? [Permission.TRADE_STOCKS] : [],
+      userId: cli.id,
+      firstName: cli.firstName,
+      lastName: cli.lastName,
+    };
   } catch {
     // Lookup nije obavezan za login flow — ako padne, dajemo TRADE_STOCKS po default-u.
     return { permissions: [Permission.TRADE_STOCKS], userId: 0 };

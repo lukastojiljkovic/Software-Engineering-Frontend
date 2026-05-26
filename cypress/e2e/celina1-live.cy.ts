@@ -343,7 +343,8 @@ describe('Live: Upravljanje zaposlenima', () => {
   it('Navigacija na Novi zaposleni', () => {
     cy.visit('/admin/employees');
     cy.wait(1500);
-    cy.contains(/novi|dodaj|kreiraj/i).click();
+    // Precizniji selektor: button na page header-u (not WatchlistQuickAccess "Dodaj").
+    cy.contains('button', /Novi zaposleni/i).click();
     cy.url().should('include', '/admin/employees/new');
   });
 
@@ -678,12 +679,12 @@ describe('Live: Kompletni navigacioni tokovi', () => {
     cy.wait(2000);
     cy.url().should('include', '/admin/employees');
 
-    // Navigate to create
-    cy.contains(/novi|dodaj|kreiraj/i).click();
+    // Navigate to create — precizniji selektor (not WatchlistQuickAccess "Dodaj").
+    cy.contains('button', /Novi zaposleni/i).click();
     cy.url().should('include', '/new');
 
-    // Cancel back
-    cy.contains(/odustani|nazad|otkaži/i).click();
+    // Cancel back — button selector.
+    cy.contains('button', /Odustani|Nazad|Otkaži/i).click();
     cy.url().should('include', '/admin/employees');
   });
 
