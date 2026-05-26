@@ -13,8 +13,8 @@ describe('recurringOrder label maps', () => {
   });
 
   it('RECURRING_MODE_LABEL_SR ima srpske labele za oba moda', () => {
-    expect(RECURRING_MODE_LABEL_SR.BYAMOUNT).toBe('Po iznosu');
-    expect(RECURRING_MODE_LABEL_SR.BYQUANTITY).toBe('Po kolicini');
+    expect(RECURRING_MODE_LABEL_SR.BY_AMOUNT).toBe('Po iznosu');
+    expect(RECURRING_MODE_LABEL_SR.BY_QUANTITY).toBe('Po kolicini');
   });
 
   it('RECURRING_DIRECTION_LABEL_SR ima srpske labele za BUY/SELL', () => {

@@ -64,7 +64,7 @@ import {
 const formSchema = z.object({
   listingId: z.number({ message: 'Izaberite hartiju' }).int().positive('Izaberite hartiju'),
   direction: z.enum(['BUY', 'SELL']),
-  mode: z.enum(['BYAMOUNT', 'BYQUANTITY']),
+  mode: z.enum(['BY_AMOUNT', 'BY_QUANTITY']),
   value: z.number({ message: 'Unesite vrednost' }).positive('Vrednost mora biti > 0'),
   accountId: z.number({ message: 'Izaberite racun' }).int().positive('Izaberite racun'),
   cadence: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']),
@@ -92,7 +92,7 @@ function formatDateTime(iso: string | null | undefined): string {
 }
 
 function formatValue(mode: RecurringMode, value: number, currency?: string): string {
-  if (mode === 'BYAMOUNT') {
+  if (mode === 'BY_AMOUNT') {
     const ccy = currency ?? 'RSD';
     try {
       return new Intl.NumberFormat('sr-RS', {
@@ -138,7 +138,7 @@ export default function RecurringOrdersPage() {
     mode: 'onChange',
     defaultValues: {
       direction: 'BUY',
-      mode: 'BYAMOUNT',
+      mode: 'BY_AMOUNT',
       cadence: 'MONTHLY',
       // listingId/accountId/value se postavljaju kad korisnik izabere
     },
@@ -229,7 +229,7 @@ export default function RecurringOrdersPage() {
       toast.success('Trajni nalog kreiran');
       form.reset({
         direction: 'BUY',
-        mode: 'BYAMOUNT',
+        mode: 'BY_AMOUNT',
         cadence: 'MONTHLY',
       });
       setSelectedListing(null);
@@ -306,12 +306,12 @@ export default function RecurringOrdersPage() {
 
   // Iznos / kolicina input — labela zavisi od mode-a
   const valueLabel =
-    mode === 'BYAMOUNT'
+    mode === 'BY_AMOUNT'
       ? 'Iznos po izvrsavanju (valuta racuna)'
       : 'Kolicina akcija po izvrsavanju';
 
   const valueHelp =
-    mode === 'BYAMOUNT'
+    mode === 'BY_AMOUNT'
       ? 'Npr. 5000 — sistem ce po toj vrednosti kupiti onoliko akcija koliko stane.'
       : 'Npr. 5 — sistem ce kupiti tacno toliko akcija po trenutnoj ceni.';
 
@@ -459,11 +459,11 @@ export default function RecurringOrdersPage() {
               </div>
             </div>
 
-            {/* Mode (BYAMOUNT/BYQUANTITY) */}
+            {/* Mode (BY_AMOUNT/BY_QUANTITY) */}
             <div className="space-y-1">
               <Label>Rezim</Label>
               <div className="grid grid-cols-2 gap-2">
-                {(['BYAMOUNT', 'BYQUANTITY'] as RecurringMode[]).map((m) => (
+                {(['BY_AMOUNT', 'BY_QUANTITY'] as RecurringMode[]).map((m) => (
                   <button
                     key={m}
                     type="button"
@@ -487,9 +487,9 @@ export default function RecurringOrdersPage() {
               <Input
                 id="value"
                 type="number"
-                step={mode === 'BYAMOUNT' ? '0.01' : '1'}
+                step={mode === 'BY_AMOUNT' ? '0.01' : '1'}
                 min="0"
-                placeholder={mode === 'BYAMOUNT' ? '5000.00' : '5'}
+                placeholder={mode === 'BY_AMOUNT' ? '5000.00' : '5'}
                 {...form.register('value', { valueAsNumber: true })}
                 data-testid="recurring-value-input"
               />

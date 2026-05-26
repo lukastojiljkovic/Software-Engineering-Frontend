@@ -3,13 +3,13 @@
 //
 // Tipovi za trajne (DCA) naloge — koristi RecurringOrdersPage i recurringOrderService.
 // BE: trading-service `RecurringOrder` entitet (ownerId, ownerType, listingId,
-// direction BUY/SELL, mode BYAMOUNT/BYQUANTITY, value, cadence DAILY/WEEKLY/MONTHLY,
+// direction BUY/SELL, mode BY_AMOUNT/BY_QUANTITY, value, cadence DAILY/WEEKLY/MONTHLY,
 // nextRun, active).
 // Spec: Zadaci_Frontend.pdf, FE3.
 // ============================================================
 
 export type RecurringCadence = 'DAILY' | 'WEEKLY' | 'MONTHLY';
-export type RecurringMode = 'BYAMOUNT' | 'BYQUANTITY';
+export type RecurringMode = 'BY_AMOUNT' | 'BY_QUANTITY';
 export type RecurringDirection = 'BUY' | 'SELL';
 export type RecurringOwnerType = 'CLIENT' | 'EMPLOYEE';
 
@@ -28,7 +28,7 @@ export interface RecurringOrderDto {
   listingType?: string;
   direction: RecurringDirection;
   mode: RecurringMode;
-  /** BYAMOUNT: novcani iznos (valuta racuna); BYQUANTITY: broj akcija. */
+  /** BY_AMOUNT: novcani iznos (valuta racuna); BY_QUANTITY: broj akcija. */
   value: number;
   /** Valuta listinga / racuna (informativna). */
   currency?: string;
@@ -59,8 +59,8 @@ export const RECURRING_CADENCE_LABEL_SR: Record<RecurringCadence, string> = {
 };
 
 export const RECURRING_MODE_LABEL_SR: Record<RecurringMode, string> = {
-  BYAMOUNT: 'Po iznosu',
-  BYQUANTITY: 'Po kolicini',
+  BY_AMOUNT: 'Po iznosu',
+  BY_QUANTITY: 'Po kolicini',
 };
 
 export const RECURRING_DIRECTION_LABEL_SR: Record<RecurringDirection, string> = {

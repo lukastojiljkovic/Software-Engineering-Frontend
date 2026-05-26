@@ -58,7 +58,7 @@ function makeOrder(overrides: Partial<RecurringOrderDto> = {}): RecurringOrderDt
     listingTicker: 'AAPL',
     listingType: 'STOCK',
     direction: 'BUY',
-    mode: 'BYAMOUNT',
+    mode: 'BY_AMOUNT',
     value: 5000,
     currency: 'USD',
     accountId: 22,

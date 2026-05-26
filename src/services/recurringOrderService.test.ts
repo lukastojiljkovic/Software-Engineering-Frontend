@@ -17,7 +17,7 @@ function makeDto(overrides: Partial<RecurringOrderDto> = {}): RecurringOrderDto 
     listingId: 5,
     listingTicker: 'AAPL',
     direction: 'BUY',
-    mode: 'BYAMOUNT',
+    mode: 'BY_AMOUNT',
     value: 5000,
     accountId: 22,
     accountNumber: '222000111111111111',
@@ -65,7 +65,7 @@ describe('recurringOrderService', () => {
       const request: CreateRecurringOrderRequest = {
         listingId: 5,
         direction: 'BUY',
-        mode: 'BYAMOUNT',
+        mode: 'BY_AMOUNT',
         value: 5000,
         accountId: 22,
         cadence: 'MONTHLY',
