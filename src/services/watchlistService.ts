@@ -18,7 +18,7 @@ import type {
 
 export const watchlistService = {
   listMyWatchlists: async (): Promise<WatchlistDto[]> => {
-    const { data } = await api.get<WatchlistDto[]>('/watchlists/my');
+    const { data } = await api.get<WatchlistDto[]>('/watchlists');
     return data;
   },
 

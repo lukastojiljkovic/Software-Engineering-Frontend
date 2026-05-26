@@ -1905,7 +1905,8 @@ describe('Mock C4: Inter-bank Payment Routing', () => {
     // Bug T2-005 fix: pre OTP modala se otvara confirm dialog sa preview-om uplate.
     // Klikni "Potvrdi i nastavi" da bi se otvorio VerificationModal.
     cy.contains('button', 'Potvrdi i nastavi').click();
-    cy.contains('Verifikacija transakcije').should('be.visible');
+    // VerificationModal heading promenjen u "Verifikacija (TOTP)" sa 26.05 TOTP migration.
+    cy.contains(/^Verifikacija/).should('be.visible');
     cy.contains('button', 'Popuni').click({ force: true });
     cy.contains('button', 'Potvrdi').last().click({ force: true });
   }

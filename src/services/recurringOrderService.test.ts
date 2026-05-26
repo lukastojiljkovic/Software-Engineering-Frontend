@@ -36,17 +36,17 @@ describe('recurringOrderService', () => {
   });
 
   describe('listMyRecurringOrders', () => {
-    it('GETs /recurring-orders/my without active filter', async () => {
+    it('GETs /recurring-orders without active filter', async () => {
       mockApi.get.mockResolvedValue({ data: [makeDto({ id: 1 }), makeDto({ id: 2 })] });
       const result = await recurringOrderService.listMyRecurringOrders();
-      expect(mockApi.get).toHaveBeenCalledWith('/recurring-orders/my', { params: {} });
+      expect(mockApi.get).toHaveBeenCalledWith('/recurring-orders', { params: {} });
       expect(result).toHaveLength(2);
     });
 
     it('passes active=true as query param', async () => {
       mockApi.get.mockResolvedValue({ data: [] });
       await recurringOrderService.listMyRecurringOrders(true);
-      expect(mockApi.get).toHaveBeenCalledWith('/recurring-orders/my', {
+      expect(mockApi.get).toHaveBeenCalledWith('/recurring-orders', {
         params: { active: true },
       });
     });
@@ -54,7 +54,7 @@ describe('recurringOrderService', () => {
     it('passes active=false as query param', async () => {
       mockApi.get.mockResolvedValue({ data: [] });
       await recurringOrderService.listMyRecurringOrders(false);
-      expect(mockApi.get).toHaveBeenCalledWith('/recurring-orders/my', {
+      expect(mockApi.get).toHaveBeenCalledWith('/recurring-orders', {
         params: { active: false },
       });
     });

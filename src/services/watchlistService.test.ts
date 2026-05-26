@@ -12,7 +12,7 @@ describe('watchlistService', () => {
   });
 
   describe('listMyWatchlists', () => {
-    it('GET /watchlists/my and returns list', async () => {
+    it('GET /watchlists and returns list', async () => {
       const lists: WatchlistDto[] = [
         {
           id: 1,
@@ -26,7 +26,7 @@ describe('watchlistService', () => {
 
       const result = await watchlistService.listMyWatchlists();
 
-      expect(mockedApi.get).toHaveBeenCalledWith('/watchlists/my');
+      expect(mockedApi.get).toHaveBeenCalledWith('/watchlists');
       expect(result).toEqual(lists);
     });
 

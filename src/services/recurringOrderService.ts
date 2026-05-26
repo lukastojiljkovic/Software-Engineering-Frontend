@@ -13,14 +13,14 @@ import type {
 
 export const recurringOrderService = {
   /**
-   * GET /recurring-orders/my?active=true|false
+   * GET /recurring-orders?active=true|false
    * `activeOnly` opcioni filter — bez parametra vraca sve naloge korisnika
    * (i aktivne i pauzirane); BE filtrira po `ownerId`/`ownerType` iz JWT-a.
    */
   listMyRecurringOrders: async (activeOnly?: boolean): Promise<RecurringOrderDto[]> => {
     const params: Record<string, unknown> = {};
     if (typeof activeOnly === 'boolean') params.active = activeOnly;
-    const { data } = await api.get<RecurringOrderDto[]>('/recurring-orders/my', { params });
+    const { data } = await api.get<RecurringOrderDto[]>('/recurring-orders', { params });
     return data;
   },
 
