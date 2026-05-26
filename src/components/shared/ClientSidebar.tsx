@@ -32,6 +32,8 @@ import {
   BellRing,
   Repeat,
   ScrollText,
+  BarChart3,
+  ShieldAlert,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/button';
@@ -184,6 +186,15 @@ export default function ClientSidebar() {
       if (isAdmin) {
         links.push(
           { label: 'Kamatne stope', path: '/admin/savings/rates', icon: <Percent className="h-4 w-4" /> },
+        );
+      }
+
+      // W3-T3: Spark output exposure (analytics + fraud alerts) — samo admin/supervizor
+      // koji su ujedno i admini (BE rute su adminOnly da bi se zadrzao tight permission scope).
+      if (isAdmin) {
+        links.push(
+          { label: 'Analitike', path: '/admin/analytics', icon: <BarChart3 className="h-4 w-4" /> },
+          { label: 'Fraud alerts', path: '/admin/fraud-alerts', icon: <ShieldAlert className="h-4 w-4" /> },
         );
       }
 

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import PriceAlertDialog from '@/components/pricealert/PriceAlertDialog';
 import AddToWatchlistButton from '@/components/watchlist/AddToWatchlistButton';
+import { PredictionWidget } from '@/components/PredictionWidget';
 import type { Listing, ListingDailyPrice, OptionChain } from '@/types/celina3';
 import listingService from '@/services/listingService';
 import { toast } from '@/lib/notify';
@@ -804,6 +805,12 @@ export default function SecuritiesDetailsPage() {
 
         {/* Right sidebar - Order panel + Info */}
         <div className="space-y-5">
+          {/* W3-T3: Spark ML predikcija sutrasnje close cene (tiho se sakriva
+              ako BE nema modela za simbol). Koristi ticker, ne ID. */}
+          {listing.listingType === 'STOCK' && (
+            <PredictionWidget symbol={listing.ticker} currentPrice={listing.price} />
+          )}
+
           {/* Order Panel */}
           <Card className="border-border/50 shadow-sm overflow-hidden">
             <div className="bg-gradient-to-r from-indigo-500/5 to-violet-500/5 dark:from-indigo-500/10 dark:to-violet-500/10 px-5 py-3 border-b border-border/50">

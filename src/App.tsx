@@ -10,6 +10,9 @@ import ActivateAccountPage from './pages/ActivateAccount/ActivateAccountPage';
 import EmployeeListPage from './pages/Admin/EmployeeListPage';
 import EmployeeCreatePage from './pages/Admin/EmployeeCreatePage';
 import EmployeeEditPage from './pages/Admin/EmployeeEditPage';
+// W3-T3: Spark output exposure (analytics + fraud alerts)
+import AnalyticsPage from './pages/Admin/AnalyticsPage';
+import FraudAlertsPage from './pages/Admin/FraudAlertsPage';
 import NotFoundPage from './pages/Error/NotFoundPage';
 import ForbiddenPage from './pages/Error/ForbiddenPage';
 import ServerErrorPage from './pages/Error/ServerErrorPage';
@@ -141,6 +144,9 @@ export default function App() {
             <Route path="/admin/employees" element={<EmployeeListPage />} />
             <Route path="/admin/employees/new" element={<EmployeeCreatePage />} />
             <Route path="/admin/employees/:id" element={<EmployeeEditPage />} />
+            {/* W3-T3: Spark output exposure — analytics + fraud alerts dashboard */}
+            <Route path="/admin/analytics" element={<AnalyticsPage />} />
+            <Route path="/admin/fraud-alerts" element={<FraudAlertsPage />} />
           </Route>
 
           {/* Employee portal rute (svi zaposleni - ADMIN i EMPLOYEE role) */}
